@@ -1,7 +1,9 @@
 <div class="content">
     <ng-container *ngIf="!purchasePriceFormControl.value">
         <div class="purchasePricePromptContainer">
-            <h2 class="prompt">Please provide a purchase price to continue</h2>
+            <h1 class="title">
+                Mortgage <img src="icon-black.png" class="icon">
+            </h1>
             <mat-form-field appearance="outline" floatLabel="always">
                 <mat-label>Purchase Price</mat-label>
                 <input currencyMask matInput [min]="0" [(ngModel)]="initialPurchasePriceNgModel" [options]="{ align: 'left' }"/>
@@ -9,28 +11,35 @@
         </div>
     </ng-container>
     <ng-container *ngIf="purchasePriceFormControl.value">
-        <div class="metadata-configurations-container">
-            <mat-form-field appearance="outline" floatLabel="always">
-                <mat-label>Purchase Price</mat-label>
-                <input currencyMask matInput [min]="0" [(ngModel)]="purchasePriceNgModel" [options]="{ align: 'left' }"/>
-            </mat-form-field>
-            <mat-form-field appearance="outline" floatLabel="always">
-                <mat-label>Start date</mat-label>
-                <input matInput [matDatepicker]="picker" readonly [formControl]="startDateFormControl">
-                <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
-                <mat-datepicker #picker></mat-datepicker>
-            </mat-form-field>
-            <mat-form-field appearance="outline" floatLabel="always">
-                <mat-label>Term Years</mat-label>
-                <mat-select [formControl]="termYearsFormControl">
-                    <mat-option [value]="10">10 years</mat-option>
-                    <mat-option [value]="15">15 years</mat-option>
-                    <mat-option [value]="20">20 years</mat-option>
-                    <mat-option [value]="25">25 years</mat-option>
-                    <mat-option [value]="30">30 years</mat-option>
-                </mat-select>
-            </mat-form-field>
-        </div>
+        <mat-accordion>
+            <mat-expansion-panel>
+              <mat-expansion-panel-header>
+                <mat-panel-title>Configurations</mat-panel-title>
+              </mat-expansion-panel-header>
+              <div class="metadata-configurations-container">
+                <mat-form-field appearance="outline" floatLabel="always">
+                    <mat-label>Purchase Price</mat-label>
+                    <input currencyMask matInput [min]="0" [(ngModel)]="purchasePriceNgModel" [options]="{ align: 'left' }"/>
+                </mat-form-field>
+                <mat-form-field appearance="outline" floatLabel="always">
+                    <mat-label>Start date</mat-label>
+                    <input matInput [matDatepicker]="picker" readonly [formControl]="startDateFormControl">
+                    <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
+                    <mat-datepicker #picker></mat-datepicker>
+                </mat-form-field>
+                <mat-form-field appearance="outline" floatLabel="always">
+                    <mat-label>Term Years</mat-label>
+                    <mat-select [formControl]="termYearsFormControl">
+                        <mat-option [value]="10">10 years</mat-option>
+                        <mat-option [value]="15">15 years</mat-option>
+                        <mat-option [value]="20">20 years</mat-option>
+                        <mat-option [value]="25">25 years</mat-option>
+                        <mat-option [value]="30">30 years</mat-option>
+                    </mat-select>
+                </mat-form-field>
+            </div>
+            </mat-expansion-panel>
+        </mat-accordion>
     </ng-container>
     <div class="results-container" *ngIf="purchasePriceFormControl.value">
         <div class="result">
@@ -52,40 +61,49 @@
             >
             </canvas>
         </div>
-        <div class="slider-configurations-container">
-            <div class="slider-configuration">
-                <b class="title">INTEREST</b>
-                {{interestFormControl.value}}%
-                <mat-slider
-                    [max]="10"
-                    [min]="0.1"
-                    [step]="0.1"
-                >
-                    <input [formControl]="interestFormControl" matSliderThumb #slider>
-                </mat-slider>
-            </div>
-            <div class="slider-configuration">
-                <b class="title">EXTRA PER PAYMENT</b>
-                {{formatToCurrency(lumpSumFormControl.value)}}
-                <mat-slider
-                    [max]="0.01 * purchasePriceFormControl.value"
-                    [min]="0"
-                    [step]="1"
-                >
-                    <input [formControl]="lumpSumFormControl" matSliderThumb #slider>
-                </mat-slider>
-            </div>
-            <div class="slider-configuration">
-                <b class="title">DOWN PAYMENT</b>
-                {{formatToCurrency(downPaymentFormControl.value)}}
-                <mat-slider
-                    [max]="0.2 * purchasePriceFormControl.value"
-                    [min]="0"
-                    [step]="1000"
-                >
-                    <input [formControl]="downPaymentFormControl" matSliderThumb #slider>
-                </mat-slider>
-            </div>
-        </div>
+        <mat-tab-group animationDuration="0">
+            <mat-tab label="INTEREST">
+                <div class="slider-configuration">
+                    <h3 class="title">
+                        {{interestFormControl.value}}%
+                    </h3>
+                    <mat-slider
+                        [max]="10"
+                        [min]="0.1"
+                        [step]="0.1"
+                    >
+                        <input [formControl]="interestFormControl" matSliderThumb #slider>
+                    </mat-slider>
+                </div>
+            </mat-tab>
+            <mat-tab label="EXTRA PER PAYMENT">
+                <div class="slider-configuration">
+                    <h3 class="title">
+                        {{formatToCurrency(lumpSumFormControl.value)}}
+                    </h3>
+                    <mat-slider
+                        [max]="0.01 * purchasePriceFormControl.value"
+                        [min]="0"
+                        [step]="1"
+                    >
+                        <input [formControl]="lumpSumFormControl" matSliderThumb #slider>
+                    </mat-slider>
+                </div>
+            </mat-tab>
+            <mat-tab label="DOWN PAYMENT">
+                <div class="slider-configuration">
+                    <h3 class="title">
+                        {{formatToCurrency(downPaymentFormControl.value)}}
+                    </h3>
+                    <mat-slider
+                        [max]="0.2 * purchasePriceFormControl.value"
+                        [min]="0"
+                        [step]="1000"
+                    >
+                        <input [formControl]="downPaymentFormControl" matSliderThumb #slider>
+                    </mat-slider>
+                </div>
+            </mat-tab>
+        </mat-tab-group>
     </ng-container>
 </div>

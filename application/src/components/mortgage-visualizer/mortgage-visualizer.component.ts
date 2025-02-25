@@ -2,11 +2,13 @@ import { CommonModule } from '@angular/common';
 import { Component, SimpleChanges, ViewChild } from '@angular/core';
 import { FormControl, FormGroup, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatExpansionModule } from '@angular/material/expansion';
 import { MatSliderModule  } from '@angular/material/slider';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatSelectModule } from '@angular/material/select';
+import { MatTabsModule } from '@angular/material/tabs';
 import { ChartData, ChartOptions, Chart, registerables } from 'chart.js';
 import { BaseChartDirective } from 'ng2-charts';
 import { CurrencyMaskModule } from "ng2-currency-mask";
@@ -23,11 +25,13 @@ import { MortgageParams, PaymentDetail, PaymentFrequency, calculateMortgage } fr
     BaseChartDirective,
     FormsModule,
     MatDatepickerModule,
+    MatExpansionModule,
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
     MatSliderModule,
     MatRadioModule,
+    MatTabsModule,
   ],
   templateUrl: './mortgage-visualizer.component.html',
   styleUrl: './mortgage-visualizer.component.scss'
@@ -94,7 +98,7 @@ export class MortgageVisualizerComponent {
       scales: {
         x: {
           ticks: {
-            maxTicksLimit: 5
+            maxTicksLimit: 3
           }
         },
       },

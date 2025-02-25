@@ -4,6 +4,12 @@
     padding: 20px;
 }
 
+@mixin mobile {
+    @media (max-width: 768px) {
+      @content;
+    }
+}
+
 .content {
     width: 100%;
     height: 100%;
@@ -20,33 +26,27 @@
         justify-content: center;
         align-items: center;
 
-        .prompt {
-            color: #666;
+        .title {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+
+            .icon {
+                width: 50px;
+                height: 50px;
+                margin-left: 8px;
+                vertical-align: middle;
+              }
         }
     }
 
     .chart-container {
         width: 100%;
-        height: 60%;
-    }
 
-    .slider-configurations-container {
-        display: flex;
-        flex-direction: row;
-        flex-wrap: wrap;
-        width: 100%;
-        flex-grow: 1;
-
-        .slider-configuration {
-            mat-slider {
-                width: 90%;
-            }
-            width: 33%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
+        @include mobile {
+            height: 40%;
         }
+        height: 60%;
     }
 
     .results-container {
@@ -99,4 +99,23 @@
     flex-direction: column;
     justify-content: center;
     align-items: center;
+}
+
+mat-tab-group {
+    flex-grow: 1;
+
+    .slider-configuration {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+
+        mat-slider {
+            width: 50%;
+
+            @include mobile {
+                width: 90%;
+            }
+        }
+    }
 }
