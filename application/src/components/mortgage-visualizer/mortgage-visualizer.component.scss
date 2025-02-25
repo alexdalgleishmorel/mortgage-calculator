@@ -1,0 +1,102 @@
+:host {
+    width: 100%;
+    height: 100%;
+    padding: 20px;
+}
+
+.content {
+    width: 100%;
+    height: 100%;
+
+    display: flex;
+    flex-direction: column;
+
+    .purchasePricePromptContainer {
+        width: 100%;
+        height: 100%;
+
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+
+        .prompt {
+            color: #666;
+        }
+    }
+
+    .chart-container {
+        width: 100%;
+        height: 60%;
+    }
+
+    .slider-configurations-container {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        width: 100%;
+        flex-grow: 1;
+
+        .slider-configuration {
+            mat-slider {
+                width: 90%;
+            }
+            width: 33%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+    }
+
+    .results-container {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+        width: 100%;
+        flex-grow: 1;
+
+        gap: 10%;
+
+        .result {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+
+            .interest {
+                color: #fa5252;
+            }
+
+            .date {
+                color: #40c057
+            }
+        }
+    }
+
+    .metadata-configurations-container {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+
+        justify-content: space-between;
+        align-items: center;
+
+        width: 100%;
+        flex-grow: 1;
+    }
+}
+
+.summary-overlay {
+    position: fixed;
+    transform: translateX(80vw);
+    top: 20vh;
+}
+
+.payment-frequency-configuration {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}

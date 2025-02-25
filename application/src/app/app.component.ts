@@ -1,9 +1,10 @@
 import { Component } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+
+import { MortgageVisualizerComponent } from '@components/mortgage-visualizer/mortgage-visualizer.component';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet],
+  imports: [MortgageVisualizerComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss'
 })

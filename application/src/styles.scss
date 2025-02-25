@@ -1,1 +1,54 @@
-/* You can add global styles to this file, and also import other style files */
+@use '@angular/material' as mat;
+@import "@angular/material/prebuilt-themes/azure-blue.css";
+
+mat-form-field {
+    @include mat.all-component-densities(-5);
+}
+
+:root {
+    --primary-color: var(--mat-mdc-theme-primary);
+    --accent-color: var(--mat-mdc-theme-secondary);
+    --warn-color: var(--mat-mdc-theme-error);
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    width: 100%;
+
+    font-family: Roboto, "Helvetica Neue", sans-serif;
+}
+
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+  
+.app-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    width: 100vw;
+}
+
+.app-content {
+    flex: 1;
+    display: flex;
+}
+
+mat-form-field {
+    --mat-form-field-container-vertical-padding: 8px !important;
+    --mdc-outlined-text-field-disabled-outline-color: #74777f !important;
+
+    .mat-mdc-form-field-icon-suffix {
+        margin-right: 5px !important;
+    }
+
+    mat-label {
+        color: black !important;
+    }
+    
+    input {
+        color: var(--mat-datepicker-calendar-date-text-color) !important;
+    }
+}
