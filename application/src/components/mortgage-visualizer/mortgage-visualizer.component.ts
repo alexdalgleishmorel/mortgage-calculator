@@ -38,7 +38,6 @@ import { MortgageParams, PaymentDetail, PaymentFrequency, calculateMortgage } fr
 })
 export class MortgageVisualizerComponent {
   public paymentDates: string[] = [];
-  public remainingPrincipleDataset: any = {};
   public paymentDetails: PaymentDetail[] = [];
   public totalInterest: number = 0;
   public finalPaymentDate: string = '';
@@ -61,7 +60,7 @@ export class MortgageVisualizerComponent {
     this.purchasePriceFormControl.setValue(val);
   }
 
-  public startDateFormControl: FormControl<Date> = new FormControl(new Date(), { nonNullable: true })
+  public startDateFormControl: FormControl<Date> = new FormControl(new Date(), { nonNullable: true });
 
   public interestFormControl: FormControl<number> = new FormControl(5, { nonNullable: true });
   public lumpSumFormControl: FormControl<number> = new FormControl(0, { nonNullable: true });
@@ -84,46 +83,60 @@ export class MortgageVisualizerComponent {
 
   @ViewChild(BaseChartDirective) chart?: BaseChartDirective;
 
-  chartData: ChartData<'line'> = { labels: [], datasets: [] };
-    chartOptions: ChartOptions<'line'> = {
-      responsive: true,
-      maintainAspectRatio: false,
-      animation: false,
-      elements: {
-        point: {
-          radius: 0,
-          hoverRadius: 10,
-          hitRadius: 1000,
+  // Hybrid chartData: contains two bar datasets (for cumulative interest and principal) and one line dataset (remaining principal)
+  chartData: ChartData<'bar' | 'line'> = { labels: [], datasets: [] };
+
+  // Chart options: using a single, stacked y‑axis.
+  chartOptions: ChartOptions<'bar' | 'line'> = {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: false,
+    elements: {
+      point: {
+        radius: 0,
+        hoverRadius: 10,
+        hitRadius: 10,
+      }
+    },
+    scales: {
+      x: {
+        stacked: true,
+        ticks: {
+          maxTicksLimit: 3
         }
       },
-      scales: {
-        x: {
-          ticks: {
-            maxTicksLimit: 3
-          }
-        },
-      },
-      plugins: {
-        tooltip: {
-          displayColors: false,
-          callbacks: {
-              label: (labelData: any) => {
-                const details = this.paymentDetails[labelData.dataIndex];
-                const principlePaid = `Payment principle: ${this.formatToCurrency(details.principalPaid || 0)}`;
-                const interestPaid = `Payment interest: ${this.formatToCurrency(details.interestPaid || 0)}`;
-                return [principlePaid, interestPaid];
-              }
+      y: {
+        stacked: true,
+      }
+    },
+    plugins: {
+      tooltip: {
+        displayColors: true,
+        callbacks: {
+          label: (tooltipItem: any) => {
+            if (tooltipItem.datasetIndex === 0) {
+              return `Cumulative Interest: ${this.formatToCurrency(tooltipItem.raw)}`;
+            } else if (tooltipItem.datasetIndex === 1) {
+              return `Cumulative Principal: ${this.formatToCurrency(tooltipItem.raw)}`;
+            } else if (tooltipItem.datasetIndex === 2) {
+              const details = this.paymentDetails[tooltipItem.dataIndex];
+              const principalPaid = `Payment Principal: ${this.formatToCurrency(details.principalPaid || 0)}`;
+              const interestPaid = `Payment Interest: ${this.formatToCurrency(details.interestPaid || 0)}`;
+              return [principalPaid, interestPaid];
+            }
+            return tooltipItem.formattedValue;
           }
         }
       }
-    };
+    }
+  };
   
   constructor() {
     Chart.register(...registerables);
 
     this.intialPurchasePriceInputSubject.pipe(debounceTime(2000)).subscribe(value => {
       this._purchasePriceNgModel = value;
-      this.purchasePriceFormControl.setValue(value)
+      this.purchasePriceFormControl.setValue(value);
     });
 
     this.allControls.valueChanges.pipe(debounceTime(100)).subscribe(() => {
@@ -144,8 +157,10 @@ export class MortgageVisualizerComponent {
           this.paymentDetails = calculateMortgage(mortgageParams);
         }
 
-        const initPaymentDates = !(!!this.paymentDates.length);
+        const initPaymentDates = !this.paymentDates.length;
         const remainingPrinciples: any[] = [];
+        const interestData: number[] = [];
+        const principalData: number[] = [];
         this.totalInterest = 0;
 
         let finalPaymentDateFound = false;
@@ -154,37 +169,84 @@ export class MortgageVisualizerComponent {
             this.paymentDates.push(payment.paymentDate);
           }
           remainingPrinciples.push(payment.remainingPrincipal);
+          interestData.push(payment.interestPaid || 0);
+          principalData.push(payment.principalPaid || 0);
           this.totalInterest += payment.interestPaid || 0;
+
           if (!finalPaymentDateFound && payment.remainingPrincipal === 0) {
             this.finalPaymentDate = payment.paymentDate;
             finalPaymentDateFound = true;
           }
         });
         
-        this.remainingPrincipleDataset = {
-          label: 'Remaining principle',
+        const cumulativeInterest: (number | null)[] = [];
+        const cumulativePrincipal: (number | null)[] = [];
+        let sumInterest = 0, sumPrincipal = 0;
+        let completed = false;
+        for (let i = 0; i < interestData.length; i++) {
+          if (!completed) {
+            sumInterest += interestData[i];
+            sumPrincipal += principalData[i];
+            cumulativeInterest.push(sumInterest);
+            cumulativePrincipal.push(sumPrincipal);
+            if (remainingPrinciples[i] === 0) {
+              completed = true;
+            }
+          } else {
+            cumulativeInterest.push(null);
+            cumulativePrincipal.push(null);
+          }
+        }
+        
+        // Create the datasets:
+        // Bar datasets for cumulative interest and cumulative principal (stacked together in "stack1").
+        const interestDataset = {
+          type: 'bar' as const,
+          label: 'Cumulative Interest Paid',
+          data: cumulativeInterest,
+          backgroundColor: '#ffc9c9',
+          borderColor: '#ff8787',
+          stack: 'stack1',
+          order: 2
+        };
+        const principalDataset = {
+          type: 'bar' as const,
+          label: 'Cumulative Principal Paid',
+          data: cumulativePrincipal,
+          backgroundColor: '#b2f2bb',
+          borderColor: '#69db7c',
+          stack: 'stack1',
+          order: 2
+        };
+        // Line dataset for remaining principal.
+        const remainingPrincipleDataset = {
+          type: 'line' as const,
+          label: 'Remaining Principal',
           data: remainingPrinciples,
           backgroundColor: '#a5d8ff',
           borderColor: '#4dabf7',
+          fill: false,
+          stack: 'line',
+          order: 1
         };
-        
+
+        this.chartData = {
+          labels: this.paymentDates,
+          datasets: [interestDataset, principalDataset, remainingPrincipleDataset]
+        };
+
         this.updateChart();
       }
     });
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-      if (changes['datasets'] || changes['labels']) {
-        this.updateChart();
-      }
+    if (changes['datasets'] || changes['labels']) {
+      this.updateChart();
     }
+  }
   
   updateChart(): void {
-    this.chartData = {
-      labels: this.paymentDates,
-      datasets: [this.remainingPrincipleDataset]
-    };
-
     if (this.chart) {
       this.chart.update();
     }
