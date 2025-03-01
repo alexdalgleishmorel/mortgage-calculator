@@ -1,9 +1,7 @@
 @use '@angular/material' as mat;
 @import "@angular/material/prebuilt-themes/azure-blue.css";
 
-mat-form-field {
-    @include mat.all-component-densities(-5);
-}
+@include mat.all-component-densities(-5);
 
 :root {
     --primary-color: var(--mat-mdc-theme-primary);

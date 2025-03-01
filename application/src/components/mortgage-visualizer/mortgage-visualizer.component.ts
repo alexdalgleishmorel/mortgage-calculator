@@ -41,6 +41,7 @@ export class MortgageVisualizerComponent {
   public remainingPrincipleDataset: any = {};
   public paymentDetails: PaymentDetail[] = [];
   public totalInterest: number = 0;
+  public finalPaymentDate: string = '';
 
   private _initialPurchasePriceNgModel = 0;
   get initialPurchasePriceNgModel(): number {
@@ -107,8 +108,9 @@ export class MortgageVisualizerComponent {
           displayColors: false,
           callbacks: {
               label: (labelData: any) => {
-                const principlePaid = `Payment principle: ${this.formatToCurrency(this.paymentDetails[labelData.dataIndex].principalPaid)}`;
-                const interestPaid = `Payment interest: ${this.formatToCurrency(this.paymentDetails[labelData.dataIndex].interestPaid)}`;
+                const details = this.paymentDetails[labelData.dataIndex];
+                const principlePaid = `Payment principle: ${this.formatToCurrency(details.principalPaid || 0)}`;
+                const interestPaid = `Payment interest: ${this.formatToCurrency(details.interestPaid || 0)}`;
                 return [principlePaid, interestPaid];
               }
           }
@@ -135,16 +137,28 @@ export class MortgageVisualizerComponent {
           lumpSumPayment: this.lumpSumFormControl.value,
           startDate: this.startDateFormControl.value.toISOString(),
         };
-        
-        this.paymentDetails = calculateMortgage(mortgageParams);
-        this.paymentDates = [];
-        const remainingPrinciples: number[] = [];
+
+        if (this.paymentDetails.length) {
+          this.paymentDetails = calculateMortgage(mortgageParams, this.paymentDetails);
+        } else {
+          this.paymentDetails = calculateMortgage(mortgageParams);
+        }
+
+        const initPaymentDates = !(!!this.paymentDates.length);
+        const remainingPrinciples: any[] = [];
         this.totalInterest = 0;
-        
+
+        let finalPaymentDateFound = false;
         this.paymentDetails.forEach(payment => {
-          this.paymentDates.push(payment.paymentDate);
+          if (initPaymentDates) {
+            this.paymentDates.push(payment.paymentDate);
+          }
           remainingPrinciples.push(payment.remainingPrincipal);
-          this.totalInterest += payment.interestPaid;
+          this.totalInterest += payment.interestPaid || 0;
+          if (!finalPaymentDateFound && payment.remainingPrincipal === 0) {
+            this.finalPaymentDate = payment.paymentDate;
+            finalPaymentDateFound = true;
+          }
         });
         
         this.remainingPrincipleDataset = {

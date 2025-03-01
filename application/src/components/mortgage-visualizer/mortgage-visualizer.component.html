@@ -11,7 +11,7 @@
         </div>
     </ng-container>
     <ng-container *ngIf="purchasePriceFormControl.value">
-        <mat-accordion>
+        <mat-accordion class="configurations-dropdown">
             <mat-expansion-panel>
               <mat-expansion-panel-header>
                 <mat-panel-title>Configurations</mat-panel-title>
@@ -44,7 +44,7 @@
     <div class="results-container" *ngIf="purchasePriceFormControl.value">
         <div class="result">
             <b>DATE COMPLETE</b>
-            <div class="date">{{paymentDates.at(-2)}}</div>
+            <div class="date">{{finalPaymentDate}}</div>
         </div>
         <div class="result">
             <b>TOTAL INTEREST</b>

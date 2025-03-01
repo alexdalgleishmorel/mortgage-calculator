@@ -1,5 +1,13 @@
 export type PaymentFrequency = 'monthly' | 'bi-weekly' | 'accelerated-bi-weekly';
 
+export interface PaymentDetail {
+  paymentDate: string;
+  remainingPrincipal: number | null;
+  principalPaid: number | null;
+  interestPaid: number | null;
+  totalPayment: number | null;
+}
+
 export interface MortgageParams {
   totalPrice: number;
   downPayment: number;
@@ -10,15 +18,10 @@ export interface MortgageParams {
   startDate: string; // Start date of mortgage in YYYY-MM-DD format
 }
 
-export interface PaymentDetail {
-  paymentDate: string;
-  remainingPrincipal: number;
-  principalPaid: number;
-  interestPaid: number;
-  totalPayment: number;
-}
-
-export function calculateMortgage(params: MortgageParams): PaymentDetail[] {
+export function calculateMortgage(
+  params: MortgageParams,
+  paymentSchedule?: PaymentDetail[]
+): PaymentDetail[] {
   const { totalPrice, downPayment, interestRate, termYears, frequency, lumpSumPayment, startDate } = params;
   if (downPayment > totalPrice) {
     throw new Error("Down payment cannot be greater than the total price of the home.");
@@ -47,7 +50,7 @@ export function calculateMortgage(params: MortgageParams): PaymentDetail[] {
   // Calculate correct periodic payment
   let periodicPayment = (principal * rate) / (1 - Math.pow(1 + rate, -numPayments));
   let remainingPrincipal = principal;
-  let paymentSchedule: PaymentDetail[] = [];
+  let newSchedule: PaymentDetail[] = [];
   let currentDate = new Date(startDate);
 
   for (let i = 0; i < numPayments && remainingPrincipal > 0; i++) {
@@ -59,7 +62,7 @@ export function calculateMortgage(params: MortgageParams): PaymentDetail[] {
       periodicPayment = principalPaid + interestPaid;
     }
 
-    paymentSchedule.push({
+    newSchedule.push({
       paymentDate: currentDate.toISOString().split('T')[0],
       remainingPrincipal: Math.max(remainingPrincipal, 0),
       principalPaid,
@@ -71,13 +74,38 @@ export function calculateMortgage(params: MortgageParams): PaymentDetail[] {
     currentDate.setDate(currentDate.getDate() + paymentInterval);
   }
 
-  paymentSchedule.push({
+  newSchedule.push({
     paymentDate: currentDate.toISOString().split('T')[0],
     remainingPrincipal: Math.max(remainingPrincipal, 0),
     principalPaid: 0,
     interestPaid: 0,
-    totalPayment: periodicPayment + lumpSumPayment,
+    totalPayment: 0,
   });
 
-  return paymentSchedule;
+  if (paymentSchedule) {
+    // Merge newSchedule into the provided paymentSchedule
+    const maxLength = Math.max(newSchedule.length, paymentSchedule.length);
+    for (let i = 0; i < maxLength; i++) {
+      if (i < newSchedule.length) {
+        if (i < paymentSchedule.length) {
+          // Update existing entry
+          paymentSchedule[i] = newSchedule[i];
+        } else {
+          // Append new entry
+          paymentSchedule.push(newSchedule[i]);
+        }
+      } else {
+        // If computed schedule is shorter, update remaining entries to null values.
+        paymentSchedule[i] = {
+          paymentDate: paymentSchedule[i].paymentDate,
+          remainingPrincipal: null,
+          principalPaid: null,
+          interestPaid: null,
+          totalPayment: null,
+        };
+      }
+    }
+    return paymentSchedule;
+  }
+  return newSchedule;
 }
