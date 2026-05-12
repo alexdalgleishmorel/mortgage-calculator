@@ -118,6 +118,10 @@ const PAD = { top: 16, right: 16, bottom: 28, left: 56 };
                 <span>Total payment</span>
                 <span>{{ exact(p.totalPayment) }}</span>
               </div>
+              <div class="tooltip-row">
+                <span>Equity</span>
+                <span>{{ m(p.cumPrincipal) }}</span>
+              </div>
               <div class="tooltip-row divider">
                 <span>Remaining</span>
                 <span>{{ m(p.remaining) }}</span>

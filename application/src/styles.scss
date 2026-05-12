@@ -11,6 +11,11 @@
 html, body { height: 100%; margin: 0; padding: 0; }
 app-root, app-mortgage-visualizer { display: block; }
 
+/* Solid base behind <body> so the iOS safe-area / overscroll regions never
+   flash white (body's gradient uses background-attachment: fixed). */
+html { background-color: #14193a; }
+html:has(body.theme-light) { background-color: #ddcdb3; }
+
 :root {
   --serif: 'Cormorant Garamond', 'Iowan Old Style', Georgia, serif;
   --sans: 'Inter', system-ui, -apple-system, sans-serif;

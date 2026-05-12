@@ -225,6 +225,8 @@ export class MortgageVisualizerComponent {
       if (!isPlatformBrowser(this.platformId)) { return; }
       document.body.classList.toggle('theme-light', t === 'light');
       document.body.classList.toggle('theme-dark', t !== 'light');
+      document.querySelector('meta[name="theme-color"]')
+        ?.setAttribute('content', t === 'light' ? '#ddcdb3' : '#14193a');
       try { localStorage.setItem(THEME_KEY, t); } catch { /* ignore */ }
     });
   }
