@@ -10,12 +10,15 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>html,body{background-color:#14193a}</style>
 </head>
 <body class="theme-dark">
   <script>
     try {
       if (localStorage.getItem('mv-theme') === 'light') {
         document.body.className = 'theme-light';
+        document.documentElement.style.backgroundColor = '#ddcdb3';
+        document.body.style.backgroundColor = '#ddcdb3';
         var m = document.querySelector('meta[name="theme-color"]'); if (m) { m.content = '#ddcdb3'; }
       }
     } catch (e) {}

@@ -223,10 +223,12 @@ export class MortgageVisualizerComponent {
     effect(() => {
       const t = this.theme();
       if (!isPlatformBrowser(this.platformId)) { return; }
+      const base = t === 'light' ? '#ddcdb3' : '#14193a';
       document.body.classList.toggle('theme-light', t === 'light');
       document.body.classList.toggle('theme-dark', t !== 'light');
-      document.querySelector('meta[name="theme-color"]')
-        ?.setAttribute('content', t === 'light' ? '#ddcdb3' : '#14193a');
+      document.documentElement.style.backgroundColor = base;
+      document.body.style.backgroundColor = base;
+      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', base);
       try { localStorage.setItem(THEME_KEY, t); } catch { /* ignore */ }
     });
   }
