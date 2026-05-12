@@ -955,6 +955,22 @@ body.theme-light .cost-amount { text-shadow: none; }
 .lump-marker { fill: var(--gold); stroke: var(--fg); stroke-width: 1.5;
   filter: drop-shadow(0 0 6px color-mix(in oklab, var(--gold) 70%, transparent)); }
 
+/* Payoff marker — where the loan actually clears, ahead of the full no-extras term */
+.payoff-line { stroke-width: 1.5; stroke-dasharray: 5 4; opacity: 0.8; }
+.payoff-dot { stroke: var(--fg); stroke-width: 1.5; }
+.payoff-tag {
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 0.16em;
+  font-weight: 500;
+}
+.payoff-when {
+  font-family: var(--sans);
+  font-size: 10.5px;
+  font-weight: 500;
+  fill: var(--fg-2);
+}
+
 /* Tooltip */
 .chart-tooltip {
   position: absolute;

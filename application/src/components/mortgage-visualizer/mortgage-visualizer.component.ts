@@ -112,6 +112,8 @@ function toParams(s: Scenario): MortgageParams {
             [compareMode]="!single()"
             [lumpSums]="scenA().lumpSums"
             [lumpSumsB]="scenB().lumpSums"
+            [axisScheduleA]="axisBaselineA().schedule"
+            [axisScheduleB]="single() ? [] : axisBaselineB().schedule"
           />
         </app-collapsible-section>
 
@@ -181,8 +183,18 @@ export class MortgageVisualizerComponent {
 
   readonly resultA = computed(() => calculateMortgage(toParams(this.scenA())));
   readonly resultB = computed(() => calculateMortgage(toParams(this.scenB())));
+  // Baseline for the "time/interest saved" KPI: strip extras AND the bi-weekly
+  // acceleration (plain monthly amortization).
   readonly baselineA = computed(() => calculateMortgage({
     ...toParams(this.scenA()), recurringExtra: 0, lumpSums: [], frequency: 'monthly',
+  }));
+  // Baseline that fixes the chart's x-axis: the same scenario with the recurring
+  // extra and lump sums removed (frequency kept), i.e. the full no-extras payoff.
+  readonly axisBaselineA = computed(() => calculateMortgage({
+    ...toParams(this.scenA()), recurringExtra: 0, lumpSums: [],
+  }));
+  readonly axisBaselineB = computed(() => calculateMortgage({
+    ...toParams(this.scenB()), recurringExtra: 0, lumpSums: [],
   }));
 
   private readonly hasA = computed(() => this.resultA().schedule.length > 0 && this.resultA().principal > 0);
