@@ -8,11 +8,12 @@
    without view-encapsulation rewrites. */
 
 * { box-sizing: border-box; }
-html, body { height: 100%; margin: 0; padding: 0; }
+html, body { height: 100%; margin: 0; padding: 0; overflow-x: hidden; }
 app-root, app-mortgage-visualizer { display: block; }
 
-/* Solid base behind <body> so the iOS safe-area / overscroll regions never
-   flash white (body's gradient uses background-attachment: fixed). */
+/* Solid base on the root + body so the iOS safe-area / overscroll regions
+   never show white. The gradient sits on a fixed-position pseudo-element
+   (background-attachment: fixed is unreliable on iOS Safari). */
 html { background-color: #14193a; }
 html:has(body.theme-light) { background-color: #ddcdb3; }
 
@@ -102,20 +103,30 @@ body {
   -webkit-font-smoothing: antialiased;
   letter-spacing: 0.005em;
   min-height: 100vh;
+  background-color: #14193a;
+}
+body.theme-light { background-color: #ddcdb3; }
+
+/* The gradient backdrop, on a fixed-position layer so it reliably covers the
+   whole viewport (incl. iOS safe areas) and never scrolls. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
   background:
     radial-gradient(120% 70% at 50% 0%, var(--bg-1) 0%, var(--bg-2) 35%, transparent 70%),
     radial-gradient(80% 60% at 0% 45%, color-mix(in oklab, var(--bg-warm) 50%, transparent) 0%, transparent 60%),
     radial-gradient(90% 70% at 100% 100%, var(--bg-rose) 0%, transparent 65%),
     linear-gradient(180deg, var(--bg-2) 0%, var(--bg-3) 45%, var(--bg-4) 80%, var(--bg-5) 100%);
-  background-attachment: fixed;
 }
-body.theme-light {
+body.theme-light::before {
   background:
     radial-gradient(120% 70% at 50% 0%, var(--bg-warm) 0%, var(--bg-1) 35%, transparent 70%),
     radial-gradient(80% 60% at 0% 45%, var(--bg-rose) 0%, transparent 55%),
     radial-gradient(100% 80% at 100% 100%, var(--bg-3) 0%, transparent 65%),
     linear-gradient(180deg, var(--bg-1) 0%, var(--bg-2) 50%, var(--bg-3) 100%);
-  background-attachment: fixed;
 }
 
 /* Decorative orbs — soft colored blurs floating behind the glass */
