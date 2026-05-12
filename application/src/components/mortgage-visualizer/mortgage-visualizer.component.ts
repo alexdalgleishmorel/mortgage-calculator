@@ -1,261 +1,235 @@
-import { CommonModule } from '@angular/common';
-import { Component, SimpleChanges, ViewChild } from '@angular/core';
-import { FormControl, FormGroup, FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { MatDatepickerModule } from '@angular/material/datepicker';
-import { MatExpansionModule } from '@angular/material/expansion';
-import { MatSliderModule  } from '@angular/material/slider';
-import { MatInputModule } from '@angular/material/input';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatRadioModule } from '@angular/material/radio';
-import { MatSelectModule } from '@angular/material/select';
-import { MatTabsModule } from '@angular/material/tabs';
-import { ChartData, ChartOptions, Chart, registerables } from 'chart.js';
-import { BaseChartDirective } from 'ng2-charts';
-import { CurrencyMaskModule } from "ng2-currency-mask";
-import { debounceTime, Subject } from 'rxjs';
+import {
+  ChangeDetectionStrategy, Component, PLATFORM_ID, computed, effect, inject, signal,
+} from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 
-import { MortgageParams, PaymentDetail, PaymentFrequency, calculateMortgage } from './calculator';
+import { MortgageParams, calculateMortgage } from './mortgage-calculator';
+import { DEFAULTS, DEFAULTS_B, Scenario, ScenarioMode } from './models';
+import { groupNumber } from './format';
+
+import { CollapsibleSectionComponent } from './ui/collapsible-section.component';
+import { AreaChartComponent } from './ui/area-chart.component';
+import { ScenarioToggleComponent } from './ui/scenario-toggle.component';
+import { ScenarioInputsComponent } from './ui/scenario-inputs.component';
+import { KpiHeroComponent } from './ui/kpi-hero.component';
+import { CompareKpiCardComponent } from './ui/compare-kpi-card.component';
+import { Theme, ThemeToggleComponent } from './ui/theme-toggle.component';
+
+const THEME_KEY = 'mv-theme';
+
+function toParams(s: Scenario): MortgageParams {
+  return {
+    purchasePrice: s.purchasePrice,
+    downPayment: s.downPayment,
+    interestRate: s.interestRate,
+    termYears: s.termYears,
+    frequency: s.frequency,
+    recurringExtra: s.recurringExtra,
+    lumpSums: s.lumpSums,
+    startDate: s.startDate,
+  };
+}
 
 @Component({
   selector: 'app-mortgage-visualizer',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    CommonModule,
-    CurrencyMaskModule,
-    ReactiveFormsModule,
-    BaseChartDirective,
-    FormsModule,
-    MatDatepickerModule,
-    MatExpansionModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatSelectModule,
-    MatSliderModule,
-    MatRadioModule,
-    MatTabsModule,
+    CollapsibleSectionComponent,
+    AreaChartComponent,
+    ScenarioToggleComponent,
+    ScenarioInputsComponent,
+    KpiHeroComponent,
+    CompareKpiCardComponent,
+    ThemeToggleComponent,
   ],
-  templateUrl: './mortgage-visualizer.component.html',
-  styleUrl: './mortgage-visualizer.component.scss'
+  template: `
+    <div class="orbs">
+      <div class="orb o1"></div>
+      <div class="orb o2"></div>
+      <div class="orb o3"></div>
+    </div>
+
+    <div class="app">
+      <header class="header">
+        <div class="brand">
+          <div class="brand-mark">Mortgage <em>Visualizer</em></div>
+          <div class="brand-tag">See what it really costs</div>
+        </div>
+        <div class="header-controls">
+          <app-theme-toggle [theme]="theme()" (toggle)="toggleTheme()" />
+          <app-scenario-toggle [mode]="mode()" (modeChange)="mode.set($event)" />
+        </div>
+      </header>
+
+      <div class="stack">
+        <!-- SECTION 1 — cost of borrowing (TOP; hidden until data exists, collapsed by default) -->
+        @if (summaryVisible()) {
+          <app-collapsible-section
+            [title]="single() ? 'Cost of borrowing' : 'Scenario showdown'"
+            [subtitle]="single()
+              ? 'Total interest, payoff date, and time you save with extras.'
+              : 'Two scenarios, side by side — which one wins on total cost?'"
+            accent="var(--interest)"
+            [defaultOpen]="false"
+          >
+            <div section-header-extra class="section-headline">
+              <span class="section-headline-amount">{{ summaryHeadline() }}</span>
+              <span class="section-headline-label">
+                @if (single()) { in <span class="interest-word">interest</span> } @else { over the loan }
+              </span>
+            </div>
+
+            @if (single()) {
+              <app-kpi-hero [result]="resultA()" [baseline]="baselineA()" />
+            } @else {
+              <app-compare-kpi-card [resultA]="resultA()" [resultB]="resultB()" />
+            }
+          </app-collapsible-section>
+        }
+
+        <!-- SECTION 2 — chart -->
+        <app-collapsible-section
+          [title]="single() ? 'Where your money goes' : 'Total cost over time'"
+          [subtitle]="single()
+            ? 'Stacked principal + interest paid, with remaining balance overlay. Hover to inspect any payment.'
+            : 'Cumulative cost for each scenario. Hover to see the running difference.'"
+          accent="var(--principal)"
+        >
+          <div section-header-extra class="legend">
+            @if (single()) {
+              <span class="legend-item" style="color: var(--principal)"><span class="legend-swatch"></span><span style="color: var(--fg-2)">Principal</span></span>
+              <span class="legend-item" style="color: var(--interest)"><span class="legend-swatch"></span><span style="color: var(--fg-2)">Interest</span></span>
+              <span class="legend-item" style="color: var(--remaining)"><span class="legend-line"></span><span style="color: var(--fg-2)">Remaining</span></span>
+            } @else {
+              <span class="legend-item" style="color: var(--scenario-a)"><span class="legend-line"></span><span style="color: var(--fg-2)">A</span></span>
+              <span class="legend-item" style="color: var(--scenario-b)"><span class="legend-line dashed"></span><span style="color: var(--fg-2)">B</span></span>
+            }
+          </div>
+
+          <app-area-chart
+            [result]="resultA()"
+            [resultB]="single() ? null : resultB()"
+            [compareMode]="!single()"
+            [lumpSums]="scenA().lumpSums"
+            [lumpSumsB]="scenB().lumpSums"
+          />
+        </app-collapsible-section>
+
+        <!-- SECTION 3 — inputs -->
+        <app-collapsible-section
+          [title]="single() ? 'Your mortgage' : 'Scenarios A & B'"
+          [subtitle]="single()
+            ? 'Start with the purchase price — every other field has a sensible default you can fine-tune.'
+            : 'Tune each column independently — start with the purchase price.'"
+          accent="var(--scenario-a)"
+        >
+          <button section-header-extra type="button" class="reset-btn" (click)="reset()">↺ Reset</button>
+
+          @if (single()) {
+            <div class="inputs-grid">
+              <app-scenario-inputs
+                [scenario]="scenA()"
+                color="a"
+                [basePayment]="resultA().basePayment || 0"
+                (patch)="updateA($event)"
+              />
+            </div>
+          } @else {
+            <div class="compare-cols">
+              <div class="compare-col">
+                <app-scenario-inputs
+                  [scenario]="scenA()"
+                  color="a"
+                  label="Scenario A"
+                  [compact]="true"
+                  [basePayment]="resultA().basePayment || 0"
+                  (patch)="updateA($event)"
+                />
+              </div>
+              <div class="compare-col">
+                <app-scenario-inputs
+                  [scenario]="scenB()"
+                  color="b"
+                  label="Scenario B"
+                  [compact]="true"
+                  [basePayment]="resultB().basePayment || 0"
+                  (patch)="updateB($event)"
+                />
+              </div>
+            </div>
+          }
+        </app-collapsible-section>
+
+        <div class="footer-note">
+          CAD · {{ single()
+            ? 'Add a recurring extra or a one-off lump sum above to see how much sooner you’re free.'
+            : 'Comparing two scenarios — change anything to see the trade-off.' }}
+        </div>
+      </div>
+    </div>
+  `,
 })
 export class MortgageVisualizerComponent {
-  public paymentDates: string[] = [];
-  public paymentDetails: PaymentDetail[] = [];
-  public totalInterest: number = 0;
-  public finalPaymentDate: string = '';
+  private readonly platformId = inject(PLATFORM_ID);
 
-  private _initialPurchasePriceNgModel = 0;
-  get initialPurchasePriceNgModel(): number {
-    return this._initialPurchasePriceNgModel;
-  }
-  set initialPurchasePriceNgModel(val: number) {
-    this._initialPurchasePriceNgModel = val;
-    this.intialPurchasePriceInputSubject.next(val);
-  }
+  readonly mode = signal<ScenarioMode>('single');
+  readonly scenA = signal<Scenario>(DEFAULTS);
+  readonly scenB = signal<Scenario>(DEFAULTS_B);
+  readonly theme = signal<Theme>('dark');
 
-  private _purchasePriceNgModel = 0;
-  get purchasePriceNgModel(): number {
-    return this._purchasePriceNgModel;
-  }
-  set purchasePriceNgModel(val: number) {
-    this._purchasePriceNgModel = val;
-    this.purchasePriceFormControl.setValue(val);
-  }
+  readonly single = computed(() => this.mode() === 'single');
 
-  public startDateFormControl: FormControl<Date> = new FormControl(new Date(), { nonNullable: true });
+  readonly resultA = computed(() => calculateMortgage(toParams(this.scenA())));
+  readonly resultB = computed(() => calculateMortgage(toParams(this.scenB())));
+  readonly baselineA = computed(() => calculateMortgage({
+    ...toParams(this.scenA()), recurringExtra: 0, lumpSums: [], frequency: 'monthly',
+  }));
 
-  public interestFormControl: FormControl<number> = new FormControl(5, { nonNullable: true });
-  public lumpSumFormControl: FormControl<number> = new FormControl(0, { nonNullable: true });
-  public downPaymentFormControl: FormControl<number> = new FormControl(0, { nonNullable: true });
+  private readonly hasA = computed(() => this.resultA().schedule.length > 0 && this.resultA().principal > 0);
+  private readonly hasB = computed(() => this.resultB().schedule.length > 0 && this.resultB().principal > 0);
+  readonly summaryVisible = computed(() => this.single() ? this.hasA() : (this.hasA() && this.hasB()));
 
-  public purchasePriceFormControl: FormControl<number> = new FormControl(0, { nonNullable: true });
-  public paymentFrequencyFormControl: FormControl<PaymentFrequency> = new FormControl('monthly', { nonNullable: true });
-  public termYearsFormControl: FormControl<number> = new FormControl(25, { nonNullable: true });
-
-  private intialPurchasePriceInputSubject = new Subject<number>();
-  private allControls: FormGroup = new FormGroup({
-    interest: this.interestFormControl,
-    lumpSum: this.lumpSumFormControl,
-    downPayment: this.downPaymentFormControl,
-    purchasePrice: this.purchasePriceFormControl,
-    paymentFrequency: this.paymentFrequencyFormControl,
-    termYears: this.termYearsFormControl,
-    startDate: this.startDateFormControl,
+  readonly summaryHeadline = computed(() => {
+    if (this.single()) {
+      return '$' + groupNumber(Math.round(this.resultA().totalInterest));
+    }
+    const a = this.resultA().totalPaid; const b = this.resultB().totalPaid;
+    const diff = Math.abs(a - b);
+    if (diff <= 100) { return 'About even'; }
+    const winner = a < b ? 'A' : 'B';
+    return `${winner} saves $${groupNumber(Math.round(diff))}`;
   });
 
-  @ViewChild(BaseChartDirective) chart?: BaseChartDirective;
-
-  // Hybrid chartData: contains two bar datasets (for cumulative interest and principal) and one line dataset (remaining principal)
-  chartData: ChartData<'bar' | 'line'> = { labels: [], datasets: [] };
-
-  // Chart options: using a single, stacked y‑axis.
-  chartOptions: ChartOptions<'bar' | 'line'> = {
-    responsive: true,
-    maintainAspectRatio: false,
-    animation: false,
-    elements: {
-      point: {
-        radius: 0,
-        hoverRadius: 10,
-        hitRadius: 10,
-      }
-    },
-    scales: {
-      x: {
-        stacked: true,
-        ticks: {
-          maxTicksLimit: 3
-        }
-      },
-      y: {
-        stacked: true,
-      }
-    },
-    plugins: {
-      tooltip: {
-        displayColors: true,
-        callbacks: {
-          label: (tooltipItem: any) => {
-            if (tooltipItem.datasetIndex === 0) {
-              return `Cumulative Interest: ${this.formatToCurrency(tooltipItem.raw)}`;
-            } else if (tooltipItem.datasetIndex === 1) {
-              return `Cumulative Principal: ${this.formatToCurrency(tooltipItem.raw)}`;
-            } else if (tooltipItem.datasetIndex === 2) {
-              const details = this.paymentDetails[tooltipItem.dataIndex];
-              const principalPaid = `Payment Principal: ${this.formatToCurrency(details.principalPaid || 0)}`;
-              const interestPaid = `Payment Interest: ${this.formatToCurrency(details.interestPaid || 0)}`;
-              return [principalPaid, interestPaid];
-            }
-            return tooltipItem.formattedValue;
-          }
-        }
-      }
-    }
-  };
-  
   constructor() {
-    Chart.register(...registerables);
+    if (isPlatformBrowser(this.platformId)) {
+      try {
+        const saved = localStorage.getItem(THEME_KEY);
+        if (saved === 'light' || saved === 'dark') { this.theme.set(saved); }
+      } catch { /* ignore */ }
+    }
 
-    this.intialPurchasePriceInputSubject.pipe(debounceTime(2000)).subscribe(value => {
-      this._purchasePriceNgModel = value;
-      this.purchasePriceFormControl.setValue(value);
-    });
-
-    this.allControls.valueChanges.pipe(debounceTime(100)).subscribe(() => {
-      if (this.purchasePriceFormControl.value) {
-        const mortgageParams: MortgageParams = {
-          totalPrice: this.purchasePriceFormControl.value,
-          downPayment: this.downPaymentFormControl.value,
-          interestRate: this.interestFormControl.value,
-          termYears: this.termYearsFormControl.value,
-          frequency: this.paymentFrequencyFormControl.value,
-          lumpSumPayment: this.lumpSumFormControl.value,
-          startDate: this.startDateFormControl.value.toISOString(),
-        };
-
-        if (this.paymentDetails.length) {
-          this.paymentDetails = calculateMortgage(mortgageParams, this.paymentDetails);
-        } else {
-          this.paymentDetails = calculateMortgage(mortgageParams);
-        }
-
-        const initPaymentDates = !this.paymentDates.length;
-        const remainingPrinciples: any[] = [];
-        const interestData: number[] = [];
-        const principalData: number[] = [];
-        this.totalInterest = 0;
-
-        let finalPaymentDateFound = false;
-        this.paymentDetails.forEach(payment => {
-          if (initPaymentDates) {
-            this.paymentDates.push(payment.paymentDate);
-          }
-          remainingPrinciples.push(payment.remainingPrincipal);
-          interestData.push(payment.interestPaid || 0);
-          principalData.push(payment.principalPaid || 0);
-          this.totalInterest += payment.interestPaid || 0;
-
-          if (!finalPaymentDateFound && payment.remainingPrincipal === 0) {
-            this.finalPaymentDate = payment.paymentDate;
-            finalPaymentDateFound = true;
-          }
-        });
-        
-        const cumulativeInterest: (number | null)[] = [];
-        const cumulativePrincipal: (number | null)[] = [];
-        let sumInterest = 0, sumPrincipal = 0;
-        let completed = false;
-        for (let i = 0; i < interestData.length; i++) {
-          if (!completed) {
-            sumInterest += interestData[i];
-            sumPrincipal += principalData[i];
-            cumulativeInterest.push(sumInterest);
-            cumulativePrincipal.push(sumPrincipal);
-            if (remainingPrinciples[i] === 0) {
-              completed = true;
-            }
-          } else {
-            cumulativeInterest.push(null);
-            cumulativePrincipal.push(null);
-          }
-        }
-        
-        // Create the datasets:
-        // Bar datasets for cumulative interest and cumulative principal (stacked together in "stack1").
-        const interestDataset = {
-          type: 'bar' as const,
-          label: 'Cumulative Interest Paid',
-          data: cumulativeInterest,
-          backgroundColor: '#ffc9c9',
-          borderColor: '#ff8787',
-          stack: 'stack1',
-          order: 2
-        };
-        const principalDataset = {
-          type: 'bar' as const,
-          label: 'Cumulative Principal Paid',
-          data: cumulativePrincipal,
-          backgroundColor: '#b2f2bb',
-          borderColor: '#69db7c',
-          stack: 'stack1',
-          order: 2
-        };
-        // Line dataset for remaining principal.
-        const remainingPrincipleDataset = {
-          type: 'line' as const,
-          label: 'Remaining Principal',
-          data: remainingPrinciples,
-          backgroundColor: '#a5d8ff',
-          borderColor: '#4dabf7',
-          fill: false,
-          stack: 'line',
-          order: 1
-        };
-
-        this.chartData = {
-          labels: this.paymentDates,
-          datasets: [interestDataset, principalDataset, remainingPrincipleDataset]
-        };
-
-        this.updateChart();
-      }
+    effect(() => {
+      const t = this.theme();
+      if (!isPlatformBrowser(this.platformId)) { return; }
+      document.body.classList.toggle('theme-light', t === 'light');
+      document.body.classList.toggle('theme-dark', t !== 'light');
+      try { localStorage.setItem(THEME_KEY, t); } catch { /* ignore */ }
     });
   }
 
-  ngOnChanges(changes: SimpleChanges): void {
-    if (changes['datasets'] || changes['labels']) {
-      this.updateChart();
-    }
+  updateA(patch: Partial<Scenario>): void {
+    this.scenA.update(s => ({ ...s, ...patch }));
   }
-  
-  updateChart(): void {
-    if (this.chart) {
-      this.chart.update();
-    }
+  updateB(patch: Partial<Scenario>): void {
+    this.scenB.update(s => ({ ...s, ...patch }));
   }
 
-  formatToCurrency(value: number) {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(value);
+  toggleTheme(): void {
+    this.theme.update(t => (t === 'dark' ? 'light' : 'dark'));
+  }
+
+  reset(): void {
+    this.scenA.set(DEFAULTS);
+    this.scenB.set(DEFAULTS_B);
   }
 }
