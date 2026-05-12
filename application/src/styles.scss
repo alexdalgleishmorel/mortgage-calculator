@@ -358,11 +358,29 @@ body.theme-light .section-head:hover { background: rgba(26,18,48,0.03); }
 }
 .section.collapsed .section-body { padding: 0; }
 
-/* Inputs grid inside section */
+/* Angular components wrap their content in a host element; flatten the
+   purely-structural ones so the prototype's layout rules see the real boxes
+   (e.g. the .field elements as direct children of .inputs-grid / .compare-col). */
+app-scenario-inputs,
+app-money-field,
+app-slider-field,
+app-segmented-control,
+app-recurring-extra-field,
+app-lump-sums-field,
+app-theme-toggle,
+app-area-chart,
+app-kpi-hero,
+app-compare-kpi-card {
+  display: contents;
+}
+
+/* Inputs grid inside section — centered with a comfortable max width in single mode */
 .inputs-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0 22px;
+  max-width: 760px;
+  margin: 0 auto;
 }
 .inputs-grid > .field { margin-bottom: 14px; }
 @media (max-width: 720px) {
