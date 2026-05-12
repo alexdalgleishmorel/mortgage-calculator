@@ -114,20 +114,20 @@ const PAD = { top: 16, right: 16, bottom: 28, left: 56 };
                 <span><span class="tooltip-swatch" style="background: var(--interest)"></span>Interest paid</span>
                 <span>{{ exact(p.interestPaid) }}</span>
               </div>
-              <div class="tooltip-row subtotal">
-                <span>Total payment</span>
+              <div class="tooltip-row section emph">
+                <span>Payment</span>
                 <span>{{ exact(p.totalPayment) }}</span>
               </div>
-              <div class="tooltip-row">
-                <span>Equity</span>
+              <div class="tooltip-row section">
+                <span>Total equity</span>
                 <span>{{ m(p.cumPrincipal) }}</span>
               </div>
-              <div class="tooltip-row divider">
-                <span>Remaining</span>
+              <div class="tooltip-row">
+                <span>Total remaining</span>
                 <span>{{ m(p.remaining) }}</span>
               </div>
               @if (p.extraThisPayment > 0) {
-                <div class="tooltip-row extra">
+                <div class="tooltip-row section extra">
                   <span>+ Extra</span>
                   <span>{{ m(p.extraThisPayment) }}</span>
                 </div>

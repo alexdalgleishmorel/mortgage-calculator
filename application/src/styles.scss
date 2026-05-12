@@ -1028,12 +1028,13 @@ body.theme-light .tooltip-row span:first-child { color: rgba(26,18,48,0.7); }
   border-radius: 2px;
   display: inline-block;
 }
-.tooltip-row.subtotal {
+/* A section break inside the tooltip (e.g. payment / equity & remaining / extra). */
+.tooltip-row.section {
   border-top: 1px solid var(--glass-border);
   margin-top: 4px;
   padding-top: 6px;
 }
-.tooltip-row.subtotal span:first-child { color: var(--fg); }
+.tooltip-row.emph span:first-child { color: var(--fg); font-weight: 500; }
 .tooltip-row.divider {
   border-top: 1px solid var(--glass-border);
   margin-top: 4px;
