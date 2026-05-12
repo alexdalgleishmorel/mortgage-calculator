@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { fmtDate, parseDate } from '../mortgage-calculator';
-import { groupNumber } from '../format';
-import { LumpSum } from '../models';
+import { caretAfterDigits, cleanMoneyInput, digitsBefore, groupNumber } from '../format';
+import { LumpSum, todayISO } from '../models';
 
 @Component({
   selector: 'app-lump-sums-field',
@@ -17,7 +17,7 @@ import { LumpSum } from '../models';
           @for (ls of lumps(); track $index) {
             <div class="lump-row">
               <div class="input-shell">
-                <input type="date" [value]="ls.date" (change)="updateDate($index, dateInput.value)" #dateInput />
+                <input type="date" [value]="ls.date" (change)="updateDate($index, $event)" />
               </div>
               <div class="input-shell">
                 <span class="prefix">$</span>
@@ -25,8 +25,7 @@ import { LumpSum } from '../models';
                   type="text"
                   inputmode="numeric"
                   [value]="amountDisplay(ls.amount)"
-                  (input)="updateAmount($index, amtInput.value)"
-                  #amtInput
+                  (input)="updateAmount($index, $event)"
                 />
               </div>
               <button type="button" class="lump-remove" aria-label="Remove" (click)="remove($index)">×</button>
@@ -54,16 +53,31 @@ export class LumpSumsFieldComponent {
     this.lumpsChange.emit([...current, { date: fmtDate(d), amount: 5000 }]);
   }
 
-  updateDate(i: number, value: string): void {
+  updateDate(i: number, e: Event): void {
+    const el = e.target as HTMLInputElement;
+    if (!el.value) {
+      // A lump-sum date can never be null — snap a cleared field back.
+      el.value = this.lumps()[i]?.date || todayISO();
+      return;
+    }
     const next = this.lumps().slice();
-    next[i] = { ...next[i], date: value };
+    next[i] = { ...next[i], date: el.value };
     this.lumpsChange.emit(next);
   }
 
-  updateAmount(i: number, raw: string): void {
-    const cleaned = raw.replace(/[^\d.]/g, '');
+  updateAmount(i: number, e: Event): void {
+    const el = e.target as HTMLInputElement;
+    const before = digitsBefore(el.value, el.selectionStart ?? el.value.length);
+    const cleaned = cleanMoneyInput(el.value);
+    const n = cleaned === '' ? 0 : (parseFloat(cleaned) || 0);
+
+    const formatted = groupNumber(n);
+    const caret = caretAfterDigits(formatted, before);
+    el.value = formatted;
+    el.setSelectionRange(caret, caret);
+
     const next = this.lumps().slice();
-    next[i] = { ...next[i], amount: parseFloat(cleaned) || 0 };
+    next[i] = { ...next[i], amount: n };
     this.lumpsChange.emit(next);
   }
 

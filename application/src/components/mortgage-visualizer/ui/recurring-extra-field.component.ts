@@ -1,5 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
-import { groupNumber, money } from '../format';
+import {
+  caretAfterDigits, cleanMoneyInput, digitsBefore, formatMoneyDraft, groupNumber, money,
+} from '../format';
 import { RecurringExtraMode } from '../models';
 
 @Component({
@@ -15,14 +17,13 @@ import { RecurringExtraMode } from '../models';
         <div class="input-shell">
           <span class="prefix">{{ mode() }}</span>
           <input
-            #inp
             type="text"
             inputmode="decimal"
             placeholder="0"
             [value]="display()"
             (focus)="onFocus()"
             (blur)="onBlur()"
-            (input)="onInput(inp.value)"
+            (input)="onInput($event)"
           />
         </div>
         <div class="mode-toggle">
@@ -68,22 +69,33 @@ export class RecurringExtraFieldComponent {
     return bp > 0 ? `${(this.recurringExtra() / bp * 100).toFixed(1)}% of pmt` : '';
   });
 
-  onFocus(): void {
-    const v = this.displayVal();
-    this.draft.set(v === 0 ? '' : String(this.mode() === '%' ? v.toFixed(1) : Math.round(v)));
-  }
+  onFocus(): void { /* keep the displayed value; live-format takes over on input */ }
 
-  onBlur(): void {
-    this.draft.set(null);
-  }
+  onBlur(): void { this.draft.set(null); }
 
-  onInput(raw: string): void {
-    const cleaned = raw.replace(/[^\d.]/g, '');
-    this.draft.set(cleaned);
+  onInput(e: Event): void {
+    const el = e.target as HTMLInputElement;
+    const raw = el.value;
+
+    if (this.mode() === '%') {
+      const cleaned = raw.replace(/[^\d.]/g, '');
+      this.draft.set(cleaned);
+      const n = cleaned === '' ? 0 : (parseFloat(cleaned) || 0);
+      const dollars = this.basePayment() > 0 ? (n / 100) * this.basePayment() : 0;
+      this.extraChange.emit(Math.max(0, dollars));
+      return;
+    }
+
+    // $ mode — group the thousands as the user types.
+    const before = digitsBefore(raw, el.selectionStart ?? raw.length);
+    const cleaned = cleanMoneyInput(raw);
+    const formatted = formatMoneyDraft(cleaned);
+    const caret = formatted === '' ? 0 : caretAfterDigits(formatted, before);
+    el.value = formatted;
+    el.setSelectionRange(caret, caret);
+    this.draft.set(formatted);
+
     const n = cleaned === '' ? 0 : (parseFloat(cleaned) || 0);
-    const dollars = this.mode() === '%'
-      ? (this.basePayment() > 0 ? (n / 100) * this.basePayment() : 0)
-      : n;
-    this.extraChange.emit(Math.max(0, dollars));
+    this.extraChange.emit(Math.max(0, n));
   }
 }

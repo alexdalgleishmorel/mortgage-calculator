@@ -7,6 +7,7 @@ import { compactMoney, money, moneyExact, niceStep } from '../format';
 
 interface Hover { x: number; idx: number; }
 interface LumpMarker { idx: number; amount: number; date: string; }
+interface PayoffMarker { x: number; labelX: number; anchor: 'start' | 'end'; color: string; label: string; }
 
 const PAD = { top: 16, right: 16, bottom: 28, left: 56 };
 
@@ -78,6 +79,14 @@ const PAD = { top: 16, right: 16, bottom: 28, left: 56 };
             <circle class="lump-marker" [attr.cx]="xScale(m.idx)" [attr.cy]="PAD.top + 8" r="5" />
           }
 
+          <!-- Payoff markers: where the loan actually clears, vs the full no-extra term -->
+          @for (pm of payoffMarkers(); track pm.color) {
+            <line class="payoff-line" [attr.x1]="pm.x" [attr.x2]="pm.x" [attr.y1]="PAD.top" [attr.y2]="H() - PAD.bottom" [attr.stroke]="pm.color" />
+            <circle class="payoff-dot" [attr.cx]="pm.x" [attr.cy]="H() - PAD.bottom" r="3.5" [attr.fill]="pm.color" />
+            <text class="payoff-tag" [attr.x]="pm.labelX" [attr.y]="PAD.top + 11" [attr.text-anchor]="pm.anchor" [attr.fill]="pm.color">PAID OFF</text>
+            <text class="payoff-when" [attr.x]="pm.labelX" [attr.y]="PAD.top + 23" [attr.text-anchor]="pm.anchor">{{ pm.label }}</text>
+          }
+
           <!-- Hover -->
           @if (hover(); as h) {
             <line class="cursor-line" [attr.x1]="h.x" [attr.x2]="h.x" [attr.y1]="PAD.top" [attr.y2]="H() - PAD.bottom" />
@@ -105,12 +114,20 @@ const PAD = { top: 16, right: 16, bottom: 28, left: 56 };
                 <span><span class="tooltip-swatch" style="background: var(--interest)"></span>Interest paid</span>
                 <span>{{ exact(p.interestPaid) }}</span>
               </div>
-              <div class="tooltip-row divider">
-                <span>Remaining</span>
+              <div class="tooltip-row section emph">
+                <span>Payment</span>
+                <span>{{ exact(p.totalPayment) }}</span>
+              </div>
+              <div class="tooltip-row section">
+                <span>Total equity</span>
+                <span>{{ m(p.cumPrincipal) }}</span>
+              </div>
+              <div class="tooltip-row">
+                <span>Total remaining</span>
                 <span>{{ m(p.remaining) }}</span>
               </div>
               @if (p.extraThisPayment > 0) {
-                <div class="tooltip-row extra">
+                <div class="tooltip-row section extra">
                   <span>+ Extra</span>
                   <span>{{ m(p.extraThisPayment) }}</span>
                 </div>
@@ -148,6 +165,10 @@ export class AreaChartComponent {
   readonly compareMode = input(false);
   readonly lumpSums = input<LumpSum[]>([]);
   readonly lumpSumsB = input<LumpSum[]>([]);
+  /** Schedules of the same scenarios with no extra payments — fix the x-axis to
+   *  the full "no-extras" payoff time so early payoff shows as empty runway. */
+  readonly axisScheduleA = input<PaymentDetail[]>([]);
+  readonly axisScheduleB = input<PaymentDetail[]>([]);
 
   protected readonly PAD = PAD;
 
@@ -178,7 +199,21 @@ export class AreaChartComponent {
 
   private readonly schedA = computed<PaymentDetail[]>(() => this.result().schedule ?? []);
   private readonly schedB = computed<PaymentDetail[]>(() => this.resultB()?.schedule ?? []);
-  private readonly maxLen = computed(() => Math.max(this.schedA().length, this.schedB().length));
+
+  /** Extent of the actual data (used for hover clamping). */
+  private readonly dataLen = computed(() => Math.max(this.schedA().length, this.schedB().length));
+
+  /** Schedule that defines the x-axis span (the longer no-extras baseline), with
+   *  a fallback to the actual data when no baseline schedules are supplied. */
+  private readonly axisRef = computed<PaymentDetail[]>(() => {
+    const a = this.axisScheduleA(); const b = this.axisScheduleB();
+    const longestBaseline = a.length >= b.length ? a : b;
+    if (longestBaseline.length) { return longestBaseline; }
+    return this.schedA().length >= this.schedB().length ? this.schedA() : this.schedB();
+  });
+  /** Number of x positions on the axis. */
+  private readonly axisLen = computed(() => Math.max(
+    this.axisRef().length, this.schedA().length, this.schedB().length, 1));
 
   readonly hasData = computed(() => this.schedA().length > 0 || this.schedB().length > 0);
 
@@ -189,7 +224,7 @@ export class AreaChartComponent {
     return Math.max(ca, cb) * 1.05 || 1;
   });
 
-  xScale = (i: number): number => PAD.left + (i / Math.max(1, this.maxLen() - 1)) * this.innerW();
+  xScale = (i: number): number => PAD.left + (i / Math.max(1, this.axisLen() - 1)) * this.innerW();
   yScale = (v: number): number => PAD.top + this.innerH() - (v / this.yMax()) * this.innerH();
 
   // ── series paths ────────────────────────────────────────────────────────
@@ -226,14 +261,13 @@ export class AreaChartComponent {
   });
 
   readonly xTicks = computed(() => {
-    const a = this.schedA(); const b = this.schedB();
-    const longest = a.length >= b.length ? a : b;
-    if (!longest.length) { return []; }
-    const n = longest.length;
+    const ref = this.axisRef();
+    if (!ref.length) { return []; }
+    const n = ref.length;
     return [0, Math.floor(n * 0.33), Math.floor(n * 0.66), n - 1].map(i => ({
       i,
       x: this.xScale(i),
-      label: longest[i].dateObj.toLocaleDateString('en-CA', { month: 'short', year: 'numeric' }),
+      label: ref[Math.min(i, ref.length - 1)].dateObj.toLocaleDateString('en-CA', { month: 'short', year: 'numeric' }),
     }));
   });
 
@@ -248,6 +282,29 @@ export class AreaChartComponent {
       if (idx >= 0) { out.push({ idx, amount: ls.amount, date: ls.date }); }
     }
     return out;
+  });
+
+  // ── payoff markers (only when the loan finishes before the full term) ────
+  readonly payoffMarkers = computed<PayoffMarker[]>(() => {
+    const axis = this.axisLen();
+    const make = (sched: PaymentDetail[], color: string): PayoffMarker | null => {
+      if (sched.length === 0 || sched.length >= axis) { return null; }
+      const x = this.xScale(sched.length - 1);
+      const anchor: 'start' | 'end' = x > this.W() * 0.62 ? 'end' : 'start';
+      return {
+        x,
+        labelX: anchor === 'end' ? x - 7 : x + 7,
+        anchor,
+        color,
+        label: sched[sched.length - 1].dateObj.toLocaleDateString('en-CA', { month: 'short', year: 'numeric' }),
+      };
+    };
+    if (!this.compareMode()) {
+      const m = make(this.schedA(), 'var(--principal)');
+      return m ? [m] : [];
+    }
+    return [make(this.schedA(), 'var(--scenario-a)'), make(this.schedB(), 'var(--scenario-b)')]
+      .filter((m): m is PayoffMarker => m !== null);
   });
 
   // ── hover ───────────────────────────────────────────────────────────────
@@ -296,7 +353,8 @@ export class AreaChartComponent {
     const x = ((clientX - rect.left) / rect.width) * this.W();
     if (x < PAD.left || x > this.W() - PAD.right) { this.hover.set(null); return; }
     const t = (x - PAD.left) / this.innerW();
-    const idx = Math.round(t * (this.maxLen() - 1));
+    let idx = Math.round(t * (this.axisLen() - 1));
+    idx = Math.min(idx, Math.max(0, this.dataLen() - 1)); // never past the actual data
     this.hover.set({ x: this.xScale(idx), idx });
   }
 

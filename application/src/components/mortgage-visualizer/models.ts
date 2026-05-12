@@ -1,6 +1,11 @@
-import { LumpSum, PaymentFrequency } from './mortgage-calculator';
+import { LumpSum, PaymentFrequency, fmtDate } from './mortgage-calculator';
 
 export type { LumpSum, PaymentFrequency };
+
+/** Local-time YYYY-MM-DD for "today". */
+export function todayISO(): string {
+  return fmtDate(new Date());
+}
 
 export type ScenarioColor = 'a' | 'b';
 export type RecurringExtraMode = '$' | '%';
@@ -27,7 +32,7 @@ export const DEFAULTS: Scenario = {
   recurringExtra: 0,
   recurringExtraMode: '$',
   lumpSums: [],
-  startDate: '2026-06-01',
+  startDate: todayISO(),
 };
 
 export const DEFAULTS_B: Scenario = {
