@@ -1049,6 +1049,18 @@ body.theme-light .tooltip-row span:first-child { color: rgba(26,18,48,0.7); }
   .compare-divider { display: none; }
   .compare-kpi-big { font-size: 28px; }
   .lump-row { grid-template-columns: 1.3fr 1fr auto; }
-  .section-head { padding: 16px 18px; }
+  /* Stack the section header on phones so the description sits full-width
+     under the title instead of wrapping into a thin column beside the legend. */
+  .section-head {
+    padding: 16px 18px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .section-head-right {
+    justify-content: space-between;
+    width: 100%;
+  }
+  .section-head-right .legend { flex: 1; }
   .section-body { padding: 0 18px 18px; }
 }
