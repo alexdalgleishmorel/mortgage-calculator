@@ -29,7 +29,11 @@ import { ChangeDetectionStrategy, Component, OnInit, computed, input, signal } f
       </div>
       <div class="section-head-right" (click)="$event.stopPropagation()">
         <ng-content select="[section-header-extra]" />
-        <span class="section-chevron" [class.open]="open()" aria-hidden="true" (click)="toggle()">⌃</span>
+        <span class="section-chevron" [class.open]="open()" aria-hidden="true" (click)="toggle()">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <path d="M2.75 4.5 6 7.75 9.25 4.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </span>
       </div>
     </div>
     <div class="section-body" [style.display]="open() ? 'block' : 'none'">

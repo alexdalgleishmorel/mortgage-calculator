@@ -105,6 +105,10 @@ const PAD = { top: 16, right: 16, bottom: 28, left: 56 };
                 <span><span class="tooltip-swatch" style="background: var(--interest)"></span>Interest paid</span>
                 <span>{{ exact(p.interestPaid) }}</span>
               </div>
+              <div class="tooltip-row subtotal">
+                <span>Total payment</span>
+                <span>{{ exact(p.totalPayment) }}</span>
+              </div>
               <div class="tooltip-row divider">
                 <span>Remaining</span>
                 <span>{{ m(p.remaining) }}</span>

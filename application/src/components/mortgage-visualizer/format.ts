@@ -66,3 +66,39 @@ export function niceStep(raw: number): number {
 export function groupNumber(n: number): string {
   return Number(n).toLocaleString('en-CA');
 }
+
+// ── Live-formatting helpers for money text inputs ──────────────────────────
+// Strip everything but digits and a single decimal point.
+export function cleanMoneyInput(raw: string): string {
+  const stripped = raw.replace(/[^\d.]/g, '');
+  const firstDot = stripped.indexOf('.');
+  if (firstDot === -1) { return stripped; }
+  return stripped.slice(0, firstDot + 1) + stripped.slice(firstDot + 1).replace(/\./g, '');
+}
+
+// Group the integer part with thousands separators; pass the fractional part
+// through verbatim so a half-typed "1234." or "1234.0" stays as the user typed it.
+export function formatMoneyDraft(cleaned: string): string {
+  if (cleaned === '') { return ''; }
+  const dot = cleaned.indexOf('.');
+  if (dot === -1) { return groupNumber(Number(cleaned || '0')); }
+  const intPart = cleaned.slice(0, dot);
+  const fracPart = cleaned.slice(dot + 1);
+  return groupNumber(Number(intPart || '0')) + '.' + fracPart;
+}
+
+// Caret bookkeeping: count digits in str[0..pos), and find the index just past
+// the n-th digit in str — used to keep the caret stable when separators shift.
+export function digitsBefore(str: string, pos: number): number {
+  return (str.slice(0, pos).match(/\d/g) || []).length;
+}
+export function caretAfterDigits(str: string, n: number): number {
+  if (n <= 0) { return 0; }
+  let count = 0;
+  for (let i = 0; i < str.length; i++) {
+    if (str.charCodeAt(i) >= 48 && str.charCodeAt(i) <= 57) {
+      if (++count === n) { return i + 1; }
+    }
+  }
+  return str.length;
+}

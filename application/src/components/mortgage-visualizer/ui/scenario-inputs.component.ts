@@ -4,7 +4,7 @@ import { SliderFieldComponent } from './slider-field.component';
 import { SegmentedControlComponent, SegmentedOption } from './segmented-control.component';
 import { RecurringExtraFieldComponent } from './recurring-extra-field.component';
 import { LumpSumsFieldComponent } from './lump-sums-field.component';
-import { PaymentFrequency, Scenario, ScenarioColor } from '../models';
+import { PaymentFrequency, Scenario, ScenarioColor, todayISO } from '../models';
 
 const FREQUENCY_OPTIONS: SegmentedOption<PaymentFrequency>[] = [
   { value: 'monthly', label: 'Monthly' },
@@ -85,7 +85,7 @@ const FREQUENCY_OPTIONS: SegmentedOption<PaymentFrequency>[] = [
       <div class="field">
         <div class="field-label"><span>Start date</span></div>
         <div class="input-shell">
-          <input type="date" [value]="scenario().startDate" (change)="patch.emit({ startDate: dateInput.value })" #dateInput />
+          <input type="date" [value]="scenario().startDate" (change)="onStartDate($event)" />
         </div>
       </div>
     }
@@ -109,4 +109,15 @@ export class ScenarioInputsComponent {
     return `${pct.toFixed(1)}%`;
   });
   readonly rateLabel = computed(() => this.scenario().interestRate.toFixed(2) + '%');
+
+  /** The start date can never be null: a cleared field snaps back to the
+   *  current date (falling back to today if it were ever empty). */
+  onStartDate(e: Event): void {
+    const el = e.target as HTMLInputElement;
+    if (!el.value) {
+      el.value = this.scenario().startDate || todayISO();
+      return;
+    }
+    this.patch.emit({ startDate: el.value });
+  }
 }

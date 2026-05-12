@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
-import { groupNumber } from '../format';
+import { caretAfterDigits, cleanMoneyInput, digitsBefore, formatMoneyDraft, groupNumber } from '../format';
 
 @Component({
   selector: 'app-money-field',
@@ -13,14 +13,13 @@ import { groupNumber } from '../format';
       <div class="input-shell">
         <span class="prefix">$</span>
         <input
-          #inp
           type="text"
           inputmode="numeric"
           placeholder="0"
           [value]="display()"
           (focus)="onFocus()"
           (blur)="onBlur()"
-          (input)="onInput(inp.value)"
+          (input)="onInput($event)"
         />
       </div>
     </div>
@@ -34,7 +33,8 @@ export class MoneyFieldComponent {
   readonly max = input(100_000_000);
   readonly valueChange = output<number>();
 
-  /** Local draft string so the field can be cleared without snapping back. */
+  /** Holds what the user is typing (already grouped), so the field can hold a
+   *  half-typed value that differs from the clamped/normalized number. */
   private readonly draft = signal<string | null>(null);
 
   readonly display = computed(() => {
@@ -44,18 +44,23 @@ export class MoneyFieldComponent {
     return v === 0 ? '' : groupNumber(v);
   });
 
-  onFocus(): void {
-    const v = this.value();
-    this.draft.set(v === 0 ? '' : String(v));
-  }
+  onFocus(): void { /* keep the formatted value; live-format takes over on input */ }
 
-  onBlur(): void {
-    this.draft.set(null);
-  }
+  onBlur(): void { this.draft.set(null); }
 
-  onInput(raw: string): void {
-    const cleaned = raw.replace(/[^\d.]/g, '');
-    this.draft.set(cleaned);
+  onInput(e: Event): void {
+    const el = e.target as HTMLInputElement;
+    const before = digitsBefore(el.value, el.selectionStart ?? el.value.length);
+    const cleaned = cleanMoneyInput(el.value);
+    const formatted = formatMoneyDraft(cleaned);
+    const caret = formatted === '' ? 0 : caretAfterDigits(formatted, before);
+
+    // Write the grouped value back immediately so the caret survives the
+    // change-detection re-render (which sets the same string → no caret jump).
+    el.value = formatted;
+    el.setSelectionRange(caret, caret);
+    this.draft.set(formatted);
+
     const n = cleaned === '' ? 0 : (parseFloat(cleaned) || 0);
     this.valueChange.emit(Math.max(this.min(), Math.min(this.max(), n)));
   }

@@ -338,21 +338,20 @@ body.theme-light .section-head:hover { background: rgba(26,18,48,0.03); }
   flex-shrink: 0;
 }
 .section-chevron {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 28px;
   height: 28px;
-  line-height: 24px;
-  text-align: center;
   border-radius: 50%;
   border: 1px solid var(--glass-border);
   background: var(--glass-bg-input);
   color: var(--fg-2);
-  font-size: 14px;
-  transform: rotate(180deg);
   transition: transform .25s ease;
   cursor: pointer;
 }
-.section-chevron.open { transform: rotate(0deg); }
+.section-chevron svg { display: block; }
+.section-chevron.open { transform: rotate(180deg); }
 .section-body {
   padding: 0 26px 26px;
 }
@@ -1008,6 +1007,12 @@ body.theme-light .tooltip-row span:first-child { color: rgba(26,18,48,0.7); }
   border-radius: 2px;
   display: inline-block;
 }
+.tooltip-row.subtotal {
+  border-top: 1px solid var(--glass-border);
+  margin-top: 4px;
+  padding-top: 6px;
+}
+.tooltip-row.subtotal span:first-child { color: var(--fg); }
 .tooltip-row.divider {
   border-top: 1px solid var(--glass-border);
   margin-top: 4px;
