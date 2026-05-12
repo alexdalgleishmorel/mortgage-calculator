@@ -6,8 +6,6 @@ import { MortgageVisualizerComponent } from '@components/mortgage-visualizer/mor
   selector: 'app-root',
   imports: [MortgageVisualizerComponent],
   templateUrl: './app.component.html',
-  styleUrl: './app.component.scss'
+  styleUrl: './app.component.scss',
 })
-export class AppComponent {
-  title = 'application';
-}
+export class AppComponent {}
