@@ -566,6 +566,40 @@ body.theme-light .mode-toggle button.active {
   color: var(--fg-2);
   font-weight: 500;
 }
+
+/* Editable field value (used by sliders so you can type the number). */
+.field-value-edit {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 1px;
+  font-family: var(--sans);
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: none;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-2);
+  font-weight: 500;
+  border-bottom: 1px dashed transparent;
+  transition: border-color .15s ease, color .15s ease;
+}
+.field-value-edit:hover,
+.field-value-edit:focus-within {
+  border-bottom-color: var(--glass-border-strong);
+  color: var(--fg);
+}
+.field-value-input {
+  background: transparent;
+  border: 0;
+  outline: 0;
+  color: inherit;
+  font: inherit;
+  text-align: right;
+  width: 5ch;
+  padding: 0;
+}
+.field-value-suffix {
+  color: var(--fg-3);
+}
 .input-shell {
   position: relative;
   background: var(--glass-bg-input);
@@ -834,6 +868,66 @@ body.theme-light .cost-amount { text-shadow: none; }
 .kpi.principal .kpi-value { color: var(--principal); }
 .kpi.remaining .kpi-value { color: var(--remaining); }
 
+/* Insurance disclaimer — shown under the cost-of-borrowing summary
+   whenever a CMHC premium has been rolled into the loan. */
+.insurance-disclaimer {
+  margin-top: 16px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: var(--glass-bg-input);
+  border: 1px solid var(--glass-border);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--fg-2);
+}
+.insurance-disclaimer strong {
+  display: inline-block;
+  margin-right: 6px;
+  color: var(--interest);
+  font-weight: 600;
+}
+
+/* Thin "about this calculator" disclaimer shown above the inputs. */
+.settings-disclaimer {
+  margin-bottom: 16px;
+  border-radius: 10px;
+  background: var(--glass-bg-input);
+  border: 1px solid var(--glass-border);
+  font-size: 12.5px;
+  color: var(--fg-2);
+}
+.settings-disclaimer summary {
+  cursor: pointer;
+  padding: 8px 14px;
+  color: var(--fg-3);
+  font-weight: 500;
+  user-select: none;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.settings-disclaimer summary::-webkit-details-marker { display: none; }
+.settings-disclaimer summary::before {
+  content: '▸';
+  display: inline-block;
+  color: var(--fg-3);
+  transition: transform 0.15s ease;
+  font-size: 10px;
+}
+.settings-disclaimer[open] summary::before { transform: rotate(90deg); }
+.settings-disclaimer-body {
+  padding: 4px 14px 12px 14px;
+  line-height: 1.55;
+}
+.settings-disclaimer-body p { margin: 8px 0; }
+.settings-disclaimer-body p:first-child { margin-top: 0; }
+.settings-disclaimer-body p:last-child { margin-bottom: 0; }
+.settings-disclaimer-body strong {
+  color: var(--interest);
+  font-weight: 600;
+}
+
 /* Compare KPIs */
 .compare-kpi-card {
   padding: 22px 24px;
@@ -998,6 +1092,8 @@ body.theme-light .cost-amount { text-shadow: none; }
   border-radius: 12px;
   padding: 12px 14px;
   min-width: 200px;
+  max-width: calc(100% - 16px);
+  box-sizing: border-box;
   box-shadow: 0 10px 30px rgba(0,0,0,0.45);
   color: #fff;
   font-size: 12px;
@@ -1053,6 +1149,62 @@ body.theme-light .tooltip-row span:first-child { color: rgba(26,18,48,0.7); }
   font-weight: 600;
 }
 
+/* Side-by-side compare tooltip: label | A | B columns. */
+.tooltip-compare {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  column-gap: 16px;
+  row-gap: 2px;
+  font-variant-numeric: tabular-nums;
+}
+.tooltip-compare-head,
+.tooltip-compare-row {
+  display: contents;
+}
+.tooltip-compare-head > span {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+  color: var(--fg-3);
+  text-align: right;
+  padding-bottom: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  justify-content: flex-end;
+}
+.tooltip-compare-head > span:first-child { display: block; }
+.tooltip-compare-row > span:first-child {
+  color: var(--fg-2);
+}
+body.theme-light .tooltip-compare-row > span:first-child { color: rgba(26,18,48,0.7); }
+.tooltip-compare-row > span:not(:first-child) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.tooltip-compare-row.section > span {
+  border-top: 1px solid var(--glass-border);
+  margin-top: 4px;
+  padding-top: 6px;
+}
+.tooltip-compare-row.emph > span:first-child { color: var(--fg); font-weight: 500; }
+.tooltip-compare-row.extra > span { color: var(--gold); }
+.tooltip-compare-row.divider > span {
+  border-top: 1px solid var(--glass-border);
+  margin-top: 4px;
+  padding-top: 6px;
+  font-weight: 600;
+}
+.tooltip-compare-row.diff > span:first-child {
+  font-weight: 600;
+  color: var(--fg);
+}
+.tooltip-compare-row.diff > .diff-value {
+  grid-column: 2 / span 2;
+  text-align: right;
+  font-weight: 600;
+}
+
 /* Footer note */
 .footer-note {
   margin-top: 18px;
@@ -1079,6 +1231,15 @@ body.theme-light .tooltip-row span:first-child { color: rgba(26,18,48,0.7); }
   .kpi-value { font-size: 17px; }
   .kpi-value.sm { font-size: 16px; }
   .chart-wrap { height: 280px; }
+  /* Compact tooltip so the compare-mode 3-column grid fits inside the chart. */
+  .chart-tooltip {
+    padding: 10px 12px;
+    min-width: 0;
+    font-size: 11.5px;
+  }
+  .tooltip-date { font-size: 13.5px; margin-bottom: 4px; }
+  .tooltip-compare { column-gap: 10px; }
+  .tooltip-compare-head > span { font-size: 9.5px; letter-spacing: 0.08em; }
   .legend { gap: 10px; }
   .legend-item { font-size: 10.5px; }
   .compare-kpi-card { grid-template-columns: 1fr; gap: 14px; padding: 18px; }

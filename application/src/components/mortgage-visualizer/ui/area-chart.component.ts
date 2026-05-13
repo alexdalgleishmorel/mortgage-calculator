@@ -103,7 +103,7 @@ const PAD = { top: 16, right: 16, bottom: 28, left: 56 };
         </svg>
 
         @if (hover() && (hoverA() || hoverB())) {
-          <div class="chart-tooltip" [style.left.%]="tooltipLeftPct()" style="top: 50%" [style.transform]="tooltipTransform()">
+          <div class="chart-tooltip" #tooltip [style.left.px]="tooltipLeftPx()" style="top: 50%; transform: translateY(-50%);">
             <div class="tooltip-date">{{ tooltipDate() }}</div>
             @if (!compareMode() && hoverA(); as p) {
               <div class="tooltip-row">
@@ -120,7 +120,7 @@ const PAD = { top: 16, right: 16, bottom: 28, left: 56 };
               </div>
               <div class="tooltip-row section">
                 <span>Total equity</span>
-                <span>{{ m(p.cumPrincipal) }}</span>
+                <span>{{ m(p.cumPrincipal + downPayment()) }}</span>
               </div>
               <div class="tooltip-row">
                 <span>Total remaining</span>
@@ -134,24 +134,56 @@ const PAD = { top: 16, right: 16, bottom: 28, left: 56 };
               }
             }
             @if (compareMode()) {
-              @if (hoverA(); as p) {
-                <div class="tooltip-row">
-                  <span><span class="tooltip-swatch" style="background: var(--scenario-a)"></span>Scenario A total</span>
-                  <span>{{ m(p.cumPrincipal + p.cumInterest) }}</span>
+              <div class="tooltip-compare">
+                <div class="tooltip-compare-head">
+                  <span></span>
+                  <span><span class="tooltip-swatch" style="background: var(--scenario-a)"></span>A</span>
+                  <span><span class="tooltip-swatch" style="background: var(--scenario-b)"></span>B</span>
                 </div>
-              }
-              @if (hoverB(); as p) {
-                <div class="tooltip-row">
-                  <span><span class="tooltip-swatch" style="background: var(--scenario-b)"></span>Scenario B total</span>
-                  <span>{{ m(p.cumPrincipal + p.cumInterest) }}</span>
+                <div class="tooltip-compare-row">
+                  <span>Principal paid</span>
+                  <span>{{ pa() ? exact(pa()!.principalPaid) : '—' }}</span>
+                  <span>{{ pb() ? exact(pb()!.principalPaid) : '—' }}</span>
                 </div>
-              }
-              @if (hoverA() && hoverB()) {
-                <div class="tooltip-row divider">
-                  <span>Difference</span>
-                  <span>{{ m(diffAtHover()) }}</span>
+                <div class="tooltip-compare-row">
+                  <span>Interest paid</span>
+                  <span>{{ pa() ? exact(pa()!.interestPaid) : '—' }}</span>
+                  <span>{{ pb() ? exact(pb()!.interestPaid) : '—' }}</span>
                 </div>
-              }
+                <div class="tooltip-compare-row section emph">
+                  <span>Payment</span>
+                  <span>{{ pa() ? exact(pa()!.totalPayment) : '—' }}</span>
+                  <span>{{ pb() ? exact(pb()!.totalPayment) : '—' }}</span>
+                </div>
+                <div class="tooltip-compare-row section">
+                  <span>Total equity</span>
+                  <span>{{ pa() ? m(pa()!.cumPrincipal + downPayment()) : '—' }}</span>
+                  <span>{{ pb() ? m(pb()!.cumPrincipal + downPaymentB()) : '—' }}</span>
+                </div>
+                <div class="tooltip-compare-row">
+                  <span>Total remaining</span>
+                  <span>{{ pa() ? m(pa()!.remaining) : '—' }}</span>
+                  <span>{{ pb() ? m(pb()!.remaining) : '—' }}</span>
+                </div>
+                @if ((pa()?.extraThisPayment ?? 0) > 0 || (pb()?.extraThisPayment ?? 0) > 0) {
+                  <div class="tooltip-compare-row section extra">
+                    <span>+ Extra</span>
+                    <span>{{ (pa()?.extraThisPayment ?? 0) > 0 ? m(pa()!.extraThisPayment) : '—' }}</span>
+                    <span>{{ (pb()?.extraThisPayment ?? 0) > 0 ? m(pb()!.extraThisPayment) : '—' }}</span>
+                  </div>
+                }
+                <div class="tooltip-compare-row divider">
+                  <span>Running total</span>
+                  <span>{{ pa() ? m(pa()!.cumPrincipal + pa()!.cumInterest) : '—' }}</span>
+                  <span>{{ pb() ? m(pb()!.cumPrincipal + pb()!.cumInterest) : '—' }}</span>
+                </div>
+                @if (hoverA() && hoverB()) {
+                  <div class="tooltip-compare-row diff">
+                    <span>Difference</span>
+                    <span class="diff-value">{{ m(diffAtHover()) }}</span>
+                  </div>
+                }
+              </div>
             }
           </div>
         }
@@ -165,6 +197,10 @@ export class AreaChartComponent {
   readonly compareMode = input(false);
   readonly lumpSums = input<LumpSum[]>([]);
   readonly lumpSumsB = input<LumpSum[]>([]);
+  /** Scenario A/B down payments — added to cumulative principal so "Total
+   *  equity" reflects total home equity, not just amortized principal. */
+  readonly downPayment = input<number>(0);
+  readonly downPaymentB = input<number>(0);
   /** Schedules of the same scenarios with no extra payments — fix the x-axis to
    *  the full "no-extras" payoff time so early payoff shows as empty runway. */
   readonly axisScheduleA = input<PaymentDetail[]>([]);
@@ -173,7 +209,9 @@ export class AreaChartComponent {
   protected readonly PAD = PAD;
 
   private readonly wrapEl = viewChild<ElementRef<HTMLDivElement>>('wrap');
+  private readonly tooltipEl = viewChild<ElementRef<HTMLDivElement>>('tooltip');
   private readonly size = signal<{ w: number; h: number }>({ w: 800, h: 380 });
+  private readonly tooltipW = signal<number>(0);
   readonly hover = signal<Hover | null>(null);
 
   constructor() {
@@ -185,6 +223,19 @@ export class AreaChartComponent {
       const ro = new ResizeObserver((entries) => {
         const r = entries[0].contentRect;
         this.size.set({ w: Math.max(320, r.width), h: Math.max(220, r.height) });
+      });
+      ro.observe(el);
+      onCleanup(() => ro.disconnect());
+    });
+
+    // Measure the tooltip so we can clamp it to the chart bounds — without this,
+    // wide tooltips (especially the compare-mode side-by-side grid) overflow on
+    // small viewports.
+    effect((onCleanup) => {
+      const el = this.tooltipEl()?.nativeElement;
+      if (!el || typeof ResizeObserver === 'undefined') { return; }
+      const ro = new ResizeObserver((entries) => {
+        this.tooltipW.set(entries[0].contentRect.width);
       });
       ro.observe(el);
       onCleanup(() => ro.disconnect());
@@ -316,19 +367,31 @@ export class AreaChartComponent {
     const h = this.hover(); const b = this.schedB();
     return h && b.length ? b[Math.min(h.idx, b.length - 1)] : null;
   });
+  // Short aliases so the compare tooltip markup stays readable.
+  readonly pa = this.hoverA;
+  readonly pb = this.hoverB;
 
   readonly tooltipDate = computed(() => {
     const p = this.hoverA() ?? this.hoverB();
     return p ? p.dateObj.toLocaleDateString('en-CA', { month: 'long', day: 'numeric', year: 'numeric' }) : '';
   });
-  readonly tooltipLeftPct = computed(() => {
+  /** Tooltip left edge in CSS px, clamped to the chart bounds so it never
+   *  overflows. Prefers the right side of the cursor; flips when there's no
+   *  room there. On first paint (before width is measured), falls back to a
+   *  rough half-based flip. */
+  readonly tooltipLeftPx = computed(() => {
     const h = this.hover();
-    return h ? (h.x / this.W()) * 100 : 0;
-  });
-  readonly tooltipTransform = computed(() => {
-    const h = this.hover();
-    const right = h ? h.x > this.W() / 2 : false;
-    return `translate(${right ? 'calc(-100% - 12px)' : '12px'}, -50%)`;
+    if (!h) { return 0; }
+    const w = this.W();
+    const tw = this.tooltipW();
+    const margin = 8;
+    const offset = 12;
+    if (tw === 0) {
+      return h.x > w / 2 ? Math.max(margin, h.x - offset - 240) : h.x + offset;
+    }
+    const fitsRight = h.x + offset + tw + margin <= w;
+    const left = fitsRight ? h.x + offset : h.x - offset - tw;
+    return Math.max(margin, Math.min(w - tw - margin, left));
   });
   readonly diffAtHover = computed(() => {
     const a = this.hoverA(); const b = this.hoverB();

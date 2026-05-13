@@ -58,7 +58,7 @@ export class RecurringExtraFieldComponent {
     if (d != null) { return d; }
     const v = this.displayVal();
     if (v === 0) { return ''; }
-    return this.mode() === '%' ? v.toFixed(1) : groupNumber(Math.round(v));
+    return this.mode() === '%' ? v.toFixed(1) : groupNumber(v);
   });
 
   readonly secondaryLabel = computed(() => {

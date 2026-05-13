@@ -34,7 +34,7 @@ import { duration, fullDate, groupNumber, money, moneyExact } from '../format';
           <div class="kpi principal">
             <div class="kpi-label">Financed</div>
             <div class="kpi-value">{{ financed() }}</div>
-            <div class="kpi-sub">after down payment</div>
+            <div class="kpi-sub">{{ financedSub() }}</div>
           </div>
           <div class="kpi accent">
             <div class="kpi-label">Payoff date</div>
@@ -76,6 +76,10 @@ export class KpiHeroComponent {
     this.firstExtra() > 0 ? `incl. ${money(this.firstExtra())} extra` : 'principal + interest');
 
   readonly financed = computed(() => money(this.result().principal));
+  readonly financedSub = computed(() => {
+    const premium = this.result().insurancePremium;
+    return premium > 0 ? `incl. ${money(premium)} CMHC` : 'after down payment';
+  });
   readonly payoffDate = computed(() => fullDate(this.result().payoffDateObj));
 
   private readonly daysToPayoff = computed(() => {

@@ -1,6 +1,6 @@
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input, output, signal } from '@angular/core';
 import { fmtDate, parseDate } from '../mortgage-calculator';
-import { caretAfterDigits, cleanMoneyInput, digitsBefore, groupNumber } from '../format';
+import { caretAfterDigits, cleanMoneyInput, digitsBefore, formatMoneyDraft, groupNumber } from '../format';
 import { LumpSum, todayISO } from '../models';
 
 @Component({
@@ -23,9 +23,10 @@ import { LumpSum, todayISO } from '../models';
                 <span class="prefix">$</span>
                 <input
                   type="text"
-                  inputmode="numeric"
-                  [value]="amountDisplay(ls.amount)"
+                  inputmode="decimal"
+                  [value]="amountDisplay(ls.amount, $index)"
                   (input)="updateAmount($index, $event)"
+                  (blur)="clearDraft($index)"
                 />
               </div>
               <button type="button" class="lump-remove" aria-label="Remove" (click)="remove($index)">×</button>
@@ -42,8 +43,22 @@ export class LumpSumsFieldComponent {
   readonly startDate = input.required<string>();
   readonly lumpsChange = output<LumpSum[]>();
 
-  amountDisplay(amount: number): string {
+  /** Per-row in-progress text, so a half-typed "1234." or "1234.5" survives
+   *  Angular's re-render after each keystroke. Cleared on blur. */
+  private readonly drafts = signal<Map<number, string>>(new Map());
+
+  amountDisplay(amount: number, i: number): string {
+    const d = this.drafts().get(i);
+    if (d != null) { return d; }
     return groupNumber(amount);
+  }
+
+  clearDraft(i: number): void {
+    const m = this.drafts();
+    if (!m.has(i)) { return; }
+    const next = new Map(m);
+    next.delete(i);
+    this.drafts.set(next);
   }
 
   add(): void {
@@ -69,19 +84,22 @@ export class LumpSumsFieldComponent {
     const el = e.target as HTMLInputElement;
     const before = digitsBefore(el.value, el.selectionStart ?? el.value.length);
     const cleaned = cleanMoneyInput(el.value);
-    const n = cleaned === '' ? 0 : (parseFloat(cleaned) || 0);
-
-    const formatted = groupNumber(n);
-    const caret = caretAfterDigits(formatted, before);
+    const formatted = formatMoneyDraft(cleaned);
+    const caret = formatted === '' ? 0 : caretAfterDigits(formatted, before);
     el.value = formatted;
     el.setSelectionRange(caret, caret);
+    const draftMap = new Map(this.drafts());
+    draftMap.set(i, formatted);
+    this.drafts.set(draftMap);
 
+    const n = cleaned === '' ? 0 : (parseFloat(cleaned) || 0);
     const next = this.lumps().slice();
     next[i] = { ...next[i], amount: n };
     this.lumpsChange.emit(next);
   }
 
   remove(i: number): void {
+    this.clearDraft(i);
     this.lumpsChange.emit(this.lumps().filter((_, j) => j !== i));
   }
 }

@@ -14,7 +14,7 @@ import { caretAfterDigits, cleanMoneyInput, digitsBefore, formatMoneyDraft, grou
         <span class="prefix">$</span>
         <input
           type="text"
-          inputmode="numeric"
+          inputmode="decimal"
           placeholder="0"
           [value]="display()"
           (focus)="onFocus()"

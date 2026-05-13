@@ -47,15 +47,15 @@ const FREQUENCY_OPTIONS: SegmentedOption<PaymentFrequency>[] = [
     <app-slider-field
       label="Interest rate"
       [value]="scenario().interestRate"
-      [displayValue]="rateLabel()"
-      [min]="0.5" [max]="12" [step]="0.05"
+      suffix="%"
+      [min]="0.5" [max]="12" [step]="0.01"
       (valueChange)="patch.emit({ interestRate: $event })"
     />
 
     <app-slider-field
       label="Amortization"
       [value]="scenario().termYears"
-      [displayValue]="scenario().termYears + ' yr'"
+      suffix=" yr"
       [min]="5" [max]="30" [step]="1"
       (valueChange)="patch.emit({ termYears: $event })"
     />
@@ -108,7 +108,6 @@ export class ScenarioInputsComponent {
     const pct = s.purchasePrice > 0 ? (s.downPayment / s.purchasePrice * 100) : 0;
     return `${pct.toFixed(1)}%`;
   });
-  readonly rateLabel = computed(() => this.scenario().interestRate.toFixed(2) + '%');
 
   /** The start date can never be null: a cleared field snaps back to the
    *  current date (falling back to today if it were ever empty). */

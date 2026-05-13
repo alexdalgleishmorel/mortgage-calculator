@@ -87,16 +87,19 @@ export function formatMoneyDraft(cleaned: string): string {
   return groupNumber(Number(intPart || '0')) + '.' + fracPart;
 }
 
-// Caret bookkeeping: count digits in str[0..pos), and find the index just past
-// the n-th digit in str — used to keep the caret stable when separators shift.
+// Caret bookkeeping: count digits + decimal points in str[0..pos), and find the
+// index just past the n-th such char in str — used to keep the caret stable when
+// thousands separators shift around. The decimal point counts so the caret
+// crosses it naturally as the user types a fractional part.
 export function digitsBefore(str: string, pos: number): number {
-  return (str.slice(0, pos).match(/\d/g) || []).length;
+  return (str.slice(0, pos).match(/[\d.]/g) || []).length;
 }
 export function caretAfterDigits(str: string, n: number): number {
   if (n <= 0) { return 0; }
   let count = 0;
   for (let i = 0; i < str.length; i++) {
-    if (str.charCodeAt(i) >= 48 && str.charCodeAt(i) <= 57) {
+    const c = str.charCodeAt(i);
+    if ((c >= 48 && c <= 57) || c === 46) {
       if (++count === n) { return i + 1; }
     }
   }
