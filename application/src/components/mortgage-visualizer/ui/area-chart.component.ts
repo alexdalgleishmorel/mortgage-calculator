@@ -7,7 +7,15 @@ import { compactMoney, money, moneyExact, niceStep } from '../format';
 
 interface Hover { x: number; idx: number; }
 interface LumpMarker { idx: number; amount: number; date: string; }
-interface PayoffMarker { x: number; labelX: number; anchor: 'start' | 'end'; color: string; label: string; }
+interface PayoffMarker {
+  x: number;
+  labelX: number;
+  anchor: 'start' | 'end';
+  color: string;
+  label: string;
+  tagY: number;
+  whenY: number;
+}
 
 const PAD = { top: 16, right: 16, bottom: 28, left: 56 };
 
@@ -83,8 +91,8 @@ const PAD = { top: 16, right: 16, bottom: 28, left: 56 };
           @for (pm of payoffMarkers(); track pm.color) {
             <line class="payoff-line" [attr.x1]="pm.x" [attr.x2]="pm.x" [attr.y1]="PAD.top" [attr.y2]="H() - PAD.bottom" [attr.stroke]="pm.color" />
             <circle class="payoff-dot" [attr.cx]="pm.x" [attr.cy]="H() - PAD.bottom" r="3.5" [attr.fill]="pm.color" />
-            <text class="payoff-tag" [attr.x]="pm.labelX" [attr.y]="PAD.top + 11" [attr.text-anchor]="pm.anchor" [attr.fill]="pm.color">PAID OFF</text>
-            <text class="payoff-when" [attr.x]="pm.labelX" [attr.y]="PAD.top + 23" [attr.text-anchor]="pm.anchor">{{ pm.label }}</text>
+            <text class="payoff-tag" [attr.x]="pm.labelX" [attr.y]="pm.tagY" [attr.text-anchor]="pm.anchor" [attr.fill]="pm.color">PAID OFF</text>
+            <text class="payoff-when" [attr.x]="pm.labelX" [attr.y]="pm.whenY" [attr.text-anchor]="pm.anchor">{{ pm.label }}</text>
           }
 
           <!-- Hover -->
@@ -348,14 +356,33 @@ export class AreaChartComponent {
         anchor,
         color,
         label: sched[sched.length - 1].dateObj.toLocaleDateString('en-CA', { month: 'short', year: 'numeric' }),
+        tagY: PAD.top + 11,
+        whenY: PAD.top + 23,
       };
     };
     if (!this.compareMode()) {
       const m = make(this.schedA(), 'var(--principal)');
       return m ? [m] : [];
     }
-    return [make(this.schedA(), 'var(--scenario-a)'), make(this.schedB(), 'var(--scenario-b)')]
+    const ms = [make(this.schedA(), 'var(--scenario-a)'), make(this.schedB(), 'var(--scenario-b)')]
       .filter((m): m is PayoffMarker => m !== null);
+    // Two payoff dates close together → labels would overlap. Stack the later
+    // payoff's labels below the earlier one's. Estimated label width is the
+    // longer of "PAID OFF" or "MMM YYYY" at ~10–11px font.
+    if (ms.length === 2) {
+      const labelW = 64;
+      const extent = (m: PayoffMarker): [number, number] => m.anchor === 'end'
+        ? [m.labelX - labelW, m.labelX]
+        : [m.labelX, m.labelX + labelW];
+      const [a0, a1] = extent(ms[0]);
+      const [b0, b1] = extent(ms[1]);
+      if (a0 < b1 && b0 < a1) {
+        const later = ms[0].x <= ms[1].x ? 1 : 0;
+        const dy = 26;
+        ms[later] = { ...ms[later], tagY: ms[later].tagY + dy, whenY: ms[later].whenY + dy };
+      }
+    }
+    return ms;
   });
 
   // ── hover ───────────────────────────────────────────────────────────────
